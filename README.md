@@ -20,7 +20,27 @@ See [`Cash_Out_PRD.md`](./Cash_Out_PRD.md) for the complete product requirements
 
 ## Status
 
-Pre-implementation. This repo currently holds the spec; build is starting via Claude Code.
+In progress. The foundation is in place: schema with row-level security, email
+sign-in, and the installable PWA shell. Workplace setup, conversational shift
+logging, history, and the pay-period summary are still to come.
+
+## Getting started
+
+```bash
+npm install
+cp .env.example .env.local     # then fill in your Supabase values
+npm run dev
+```
+
+Apply `supabase/migrations/0001_initial_schema.sql` to your Supabase project,
+and follow the note at the bottom of `.env.example` to switch the Magic Link
+email template over to sending a code.
+
+```bash
+npm test              # unit tests
+npm run build         # production build
+./scripts/test-db.sh  # schema + row-level-security tests against a scratch DB
+```
 
 ## Environment variables
 

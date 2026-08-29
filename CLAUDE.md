@@ -1,5 +1,7 @@
 # Cash Out — Project Instructions
 
+@AGENTS.md
+
 Read `Cash_Out_PRD.md` first — it's the full spec. This file is for the invariants that should hold in every session, not a restatement of it.
 
 ## Non-negotiables
@@ -8,6 +10,17 @@ Read `Cash_Out_PRD.md` first — it's the full spec. This file is for the invari
 - Voice/text input goes through native OS keyboard dictation, not the in-browser Web Speech API (unreliable on iOS Safari).
 - Each user's data is private (row-level isolation via Supabase). No cross-user data access in v1.
 - Keep the Anthropic API key server-side only — never expose it to the browser.
+- Sign-in is a 6-digit email code, never a magic link. A link opens in Safari,
+  so the session lands outside the installed PWA's storage container.
+- A shift stores the wage it was worked at (`hourly_wage_at_time`). A later
+  raise must never retroactively change what a past shift was worth.
+- A shift belongs to the date it STARTED. Overnight shifts (20:00 -> 02:00) are
+  one shift on the earlier date; `minutes_worked` wraps by 24h.
+- `pay_period_anchor_date` is the FIRST DAY of a known pay period, not the pay
+  date. Ask for it that way in the UI.
+- `src/lib/pay-period.ts` and the `minutes_worked` generated column in
+  `supabase/migrations/0001_initial_schema.sql` implement the same rule. Change
+  them together; `scripts/test-db.sh` and the unit tests both check it.
 
 ## Stack
 
@@ -22,4 +35,20 @@ MVP is Section 5 of the PRD. Backlog items (Section 9) — automated paycheck re
 
 ## Build/run commands
 
-_To be filled in once the framework is chosen._
+Framework is Next.js (App Router, TypeScript, Tailwind v4) on Node 22.
+
+```bash
+npm run dev          # local dev server
+npm run build        # production build
+npm run lint         # eslint
+npx tsc --noEmit     # typecheck
+npm test             # vitest unit tests
+./scripts/test-db.sh # applies the schema to a scratch DB and tests RLS
+```
+
+`scripts/test-db.sh` needs a local Postgres and drops/recreates its target
+database — point it at a scratch DB, never at the real Supabase project.
+
+Note: Next 16 renamed Middleware to Proxy. Session refresh lives in
+`src/proxy.ts`, and it is NOT an authorization boundary — pages check the
+session themselves and RLS is what actually protects the data.
