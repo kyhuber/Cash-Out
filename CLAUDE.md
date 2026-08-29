@@ -22,6 +22,26 @@ Read `Cash_Out_PRD.md` first — it's the full spec. This file is for the invari
   `supabase/migrations/0001_initial_schema.sql` implement the same rule. Change
   them together; `scripts/test-db.sh` and the unit tests both check it.
 
+## Keeping Kyle_To_Do.md current
+
+`Kyle_To_Do.md` is the running list of what the project needs *from Kyle* —
+actions only Kyle can take (accounts, API keys, pay stub details) and
+decisions only Kyle can make.
+
+Rewrite it whenever an action is completed or a decision is made, in the same
+turn as the work itself — not at the end of a session. That means:
+
+- Move anything just decided into the "Already decided" table with the date,
+  and anything just finished into "Already done".
+- Re-cut the "Do these next" section so it only holds what is actually
+  blocking right now.
+- Add any new action or decision the work surfaced.
+- Update the "Last updated" line.
+
+If a phase's work reveals that a listed decision no longer matters, delete it
+rather than leaving it to rot. The file is only useful if the top of it can be
+trusted.
+
 ## Stack
 
 - PWA frontend, mobile-first

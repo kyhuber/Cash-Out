@@ -24,6 +24,11 @@ In progress. The foundation is in place: schema with row-level security, email
 sign-in, and the installable PWA shell. Workplace setup, conversational shift
 logging, history, and the pay-period summary are still to come.
 
+## What's needed from you
+
+See [`Kyle_To_Do.md`](./Kyle_To_Do.md) for the running list of actions and
+decisions the project is waiting on. The top section is always what's blocking.
+
 ## Getting started
 
 ```bash
