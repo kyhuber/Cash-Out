@@ -1,6 +1,10 @@
 @import "tailwindcss";
 
 :root {
+  /* Lets native controls — checkboxes, selects, date pickers — follow the
+     system theme instead of always rendering light. */
+  color-scheme: light dark;
+
   --background: #ffffff;
   --foreground: #171717;
 }

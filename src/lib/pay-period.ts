@@ -51,17 +51,21 @@ function lastDayOfMonth(year: number, monthIndex: number): number {
  *
  * `anchor` is the FIRST DAY of any known pay period — not the pay date, which
  * usually falls after the period it pays for. Weekly and biweekly periods are
- * measured from the anchor; semi-monthly and monthly are fixed to the calendar,
- * so the anchor is unused for them.
+ * measured from the anchor and require one; semi-monthly and monthly are fixed
+ * to the calendar, so the anchor is unused and may be null. This mirrors the
+ * anchor_required_for_offset_periods constraint in migration 0002.
  */
 export function payPeriodFor(
   date: DateOnly,
   type: PayPeriodType,
-  anchor: DateOnly,
+  anchor: DateOnly | null,
 ): PayPeriod {
   const d = parse(date);
 
   if (type === "weekly" || type === "biweekly") {
+    if (anchor === null) {
+      throw new Error(`A ${type} pay period needs an anchor date`);
+    }
     const a = parse(anchor);
     const length = type === "weekly" ? 7 : 14;
     // Math.floor (not truncation) so dates before the anchor bucket correctly.

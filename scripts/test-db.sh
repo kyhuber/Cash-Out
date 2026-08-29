@@ -21,7 +21,9 @@ psql "$ADMIN_URL" -qc "drop database if exists ${TEST_DB};" -c "create database 
 for f in \
   "$ROOT/supabase/tests/00_local_harness.sql" \
   "$ROOT/supabase/migrations/0001_initial_schema.sql" \
-  "$ROOT/supabase/tests/01_rls_test.sql"
+  "$ROOT/supabase/migrations/0002_conditional_anchor_date.sql" \
+  "$ROOT/supabase/tests/01_rls_test.sql" \
+  "$ROOT/supabase/tests/02_constraint_test.sql"
 do
   echo "==> $(basename "$f")"
   psql "$TEST_URL" -v ON_ERROR_STOP=1 -q -f "$f"

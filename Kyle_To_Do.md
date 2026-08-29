@@ -6,14 +6,14 @@ keys, pay stubs) and decisions only you can make.
 Claude maintains this file. It gets rewritten whenever an action is completed or
 a decision is made, so the top section is always what's actually blocking.
 
-**Last updated:** August 29, 2026 — after the first build session.
+**Last updated:** August 29, 2026 — after building workplace setup.
 
 ---
 
 ## ⏭️ Do these next
 
-These are what stand between the current code and it running on your phone.
-Nothing else in this file is urgent yet.
+Steps 1–4 get the app running. Step 5 is what you'll need in hand the first time
+you open it. Nothing below this section is urgent yet.
 
 ### 1. Create a Supabase project — *action*
 
@@ -32,10 +32,17 @@ Nothing else in this file is urgent yet.
 
 ### 3. Create the database tables — *action*
 
+There are now **two** migration files, and they must be run **in order**.
+
 - [ ] Dashboard → **SQL Editor** → **New query**
-- [ ] Paste the entire contents of
-      `supabase/migrations/0001_initial_schema.sql` and hit **Run**
-- [ ] You should see tables `workplaces` and `shifts` under **Table Editor**
+- [ ] Paste all of `supabase/migrations/0001_initial_schema.sql` → **Run**
+- [ ] New query again, paste all of
+      `supabase/migrations/0002_conditional_anchor_date.sql` → **Run**
+- [ ] Check **Table Editor** — you should see `workplaces` and `shifts`
+
+*(Skipping 0002 means the app will reject any workplace paid monthly or twice a
+month, because the schema will still demand a pay-period anchor date it no
+longer asks you for.)*
 
 ### 4. Switch the sign-in email to send a code — *action* ⚠️
 
@@ -53,15 +60,28 @@ link by default.
 - [ ] The key part is `{{ .Token }}`. If the template still only has
       `{{ .ConfirmationURL }}`, there's no code to type and sign-in will fail.
 
-### 5. Confirm one decision I made for you — *decision*
+### 5. Get your pay stub details together — *action*
 
-Your PRD says to capture an **anchor pay date** from a pay stub. I built it as
-the **first day of a pay period** instead, because a pay date usually falls
-*after* the period it pays for, which makes "which period does this shift belong
-to?" ambiguous.
+The workplace form is built and waiting. For **each** job, have a recent pay
+stub in front of you and find:
 
-So onboarding will ask *"What was the first day of a recent pay period?"* rather
-than *"When were you last paid?"*
+- [ ] **Lumen Field** — base hourly wage · how often you're paid · the first day
+      of a recent pay period · whether it pays overtime (and at what rate)
+- [ ] **Climate Pledge Arena** (Moët & Chandon Imperial Lounge) — the same four
+
+You'll also pick, per job, which of these it actually reports to you:
+*total sales · tip-out paid · event type · number of guests · notes*. Only tick
+what you can really find out. If something you'd want is missing from that list,
+tell me — that's the PRD's open question about the field list, and now you can
+answer it by looking at the real form.
+
+### 6. Confirm one decision I made for you — *decision*
+
+Your PRD says to capture an **anchor pay date**. I built it as the **first day
+of a pay period** instead, because a pay date usually falls *after* the period it
+covers, which makes "which period does this shift belong to?" ambiguous.
+
+The form asks: *"First day of a recent pay period — not the day you got paid."*
 
 - [ ] **Fine as-is**, or
 - [ ] **You'd rather enter the pay date** and have the app work backwards
@@ -69,39 +89,9 @@ than *"When were you last paid?"*
 
 ---
 
-## Phase 2 — Workplace setup
-
-Needed before a single shift can be logged. Have a recent pay stub from **each**
-job in front of you.
-
-### Actions
-
-- [ ] **Lumen Field** — from a pay stub, find:
-  - Base hourly wage
-  - Pay period type (weekly / biweekly / semi-monthly / monthly)
-  - The first day of one recent pay period
-- [ ] **Climate Pledge Arena (Moët & Chandon Imperial Lounge)** — same three
-- [ ] Note whether either job pays overtime, and at what multiplier (usually 1.5×)
-
-### Decisions
-
-- [ ] **Which optional fields to turn on per workplace.** The starter list is:
-      `total sales`, `tip-out paid`, `shift type` (concert / game / private
-      event), `guest count`, `notes`. Your PRD says one job reports total sales
-      and the other doesn't — worth confirming which is which. Unused fields
-      cost nothing, so it's fine to enable generously.
-- [ ] **PRD open question:** is that list right, or is something missing that
-      you'd actually want logged?
-- [ ] **Overtime rule.** Washington has no *daily* overtime requirement — it's
-      weekly over 40 hours — so a flat per-workplace flag should cover both your
-      jobs. Confirm neither job has a daily rule. (A friend in California later
-      would need daily rules; that's a v2 problem.)
-
----
-
 ## Phase 3 — Conversational shift logging
 
-This is the actual product, and the phase where your input matters most.
+**This is what I'm building next**, and the phase where your input matters most.
 
 ### Actions
 
@@ -190,6 +180,8 @@ Kept here so we don't relitigate them. Say the word if you want any reopened.
 | Framework | Next.js 16 + Supabase + Vercel | Aug 29 |
 | Service worker | Skipped — iOS doesn't need it, and stale caches would risk showing wrong numbers | Aug 29 |
 | Separate `users` table | Skipped — Supabase's `auth.users` already has it | Aug 29 |
+| Anchor date for monthly / twice-monthly jobs | Not asked for — those periods follow the calendar, so the form hides the field | Aug 29 |
+| Deleting a workplace | Deletes its shifts too, behind a confirm step | Aug 29 |
 
 ---
 
@@ -197,8 +189,11 @@ Kept here so we don't relitigate them. Say the word if you want any reopened.
 
 - [x] Renamed `CLAUDE` → `CLAUDE.md` so project instructions load
 - [x] Renamed `PRD` → `Cash_Out_PRD.md` so it renders and the links resolve
-- [x] Database schema written, with row-level security tested against
-      cross-user reads, writes, and deletes
+- [x] Database schema, with row-level security tested against cross-user reads,
+      writes and deletes, and constraints tested against bad data
 - [x] Email-code sign-in built end to end
 - [x] Installable PWA shell — manifest, icons, iOS home-screen support
 - [x] Pay-period and shift-duration math, unit tested
+- [x] **Workplace setup** — add, edit and delete a workplace, with wage, pay
+      period, overtime terms and the optional tracked fields
+- [x] Home screen listing your workplaces, with a first-run empty state

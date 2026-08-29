@@ -145,6 +145,22 @@ describe("payPeriodFor", () => {
     expect(payPeriodFor("2026-12-31", "monthly", "2026-01-01").end).toBe("2026-12-31");
   });
 
+  it("does not need an anchor for calendar-based periods", () => {
+    expect(payPeriodFor("2026-08-20", "semi_monthly", null)).toEqual({
+      start: "2026-08-16",
+      end: "2026-08-31",
+    });
+    expect(payPeriodFor("2026-08-20", "monthly", null)).toEqual({
+      start: "2026-08-01",
+      end: "2026-08-31",
+    });
+  });
+
+  it("requires an anchor for weekly and biweekly periods", () => {
+    expect(() => payPeriodFor("2026-08-20", "weekly", null)).toThrow(/anchor/);
+    expect(() => payPeriodFor("2026-08-20", "biweekly", null)).toThrow(/anchor/);
+  });
+
   it("rejects malformed or impossible dates", () => {
     expect(() => payPeriodFor("08/29/2026", "weekly", "2026-08-17")).toThrow();
     expect(() => payPeriodFor("2026-02-30", "weekly", "2026-08-17")).toThrow();
