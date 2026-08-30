@@ -6,172 +6,159 @@ keys, pay stubs) and decisions only you can make.
 Claude maintains this file. It gets rewritten whenever an action is completed or
 a decision is made, so the top section is always what's actually blocking.
 
-**Last updated:** August 30, 2026 — Supabase config is now server-only, so
-Vercel's public-prefix prompt no longer applies.
+**Last updated:** August 30, 2026 — end of day. Start at "Tomorrow morning".
 
 ---
 
-## ⏭️ Do these next
+# ☀️ Tomorrow morning — start here
 
-The site is deployed and loading. Sign-in is failing on one wrong environment
-variable — fix that and you're in.
+**About 15 minutes of clicking, then one message back to me.** Do them in order;
+each one confirms the previous worked.
 
-### 1. Set the two Supabase variables in Vercel — *action* ⚠️
+### Step 1 — Fix the two Vercel variables (5 min)
 
-The variable **names have changed**. Every Supabase call in this app happens on
-the server, so the values never reach the browser and don't need — or want —
-the `NEXT_PUBLIC_` prefix. Vercel's "expose to the browser" prompt disappears,
-and **Secret is the correct type**.
+The names changed today. Vercel → **Project → Settings → Environment Variables**:
 
-In Vercel → **Project → Settings → Environment Variables**:
+| Add this | Value |
+|---|---|
+| `SUPABASE_URL` | `https://orgezkldagwaifmnnbse.supabase.co` |
+| `SUPABASE_ANON_KEY` | Supabase → Project Settings → **API Keys** → anon / publishable |
 
-- [ ] Add `SUPABASE_URL` = `https://orgezkldagwaifmnnbse.supabase.co`
-      (Supabase → Project Settings → **Data API** → Project URL. No path, no
-      trailing slash.)
-- [ ] Add `SUPABASE_ANON_KEY` = the anon / publishable key
-      (Supabase → Project Settings → **API Keys**. Not the `service_role` key.)
-- [ ] Delete the old `NEXT_PUBLIC_SUPABASE_URL` and
-      `NEXT_PUBLIC_SUPABASE_ANON_KEY` once the new pair is saved
-- [ ] **Redeploy** — Deployments → `⋯` on the latest → **Redeploy**.
-      Vercel applies environment changes at build time, so editing a value
-      alone does nothing to the live site.
+- [ ] Add both. **Secret is the right type now** — the browser-exposure prompt
+      won't appear, because these no longer go to the browser at all.
+- [ ] Delete the old `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- [ ] **Redeploy** — Deployments → `⋯` on the latest → **Redeploy**
 
-The old prefixed names still work as a fallback, so nothing breaks while you
-switch over. Deleting them afterwards just keeps things tidy.
+⚠️ The redeploy is not optional. Vercel applies environment changes at build
+time, so the settings page will show your new values while the live site keeps
+serving the old ones.
 
-When you add `ANTHROPIC_API_KEY` later, that one is a **real** secret — it has
-no prefix for the same reason, and must never get one.
+### Step 2 — Sign in (2 min)
 
-### 2. Sign in, and confirm the email sends a *code* — *action*
+- [ ] Open the site, enter your email, tap **Email me a code**
 
-- [ ] Enter your email on the live site and tap **Email me a code**
-- [ ] Check what arrives. You want a **6-digit code**, not a link.
+**What should happen:** an email with a **6-digit code**. Type it in, you're in.
 
-If it's a link — or nothing useful arrives — the email template still needs
-changing: Supabase → **Authentication → Emails → Magic Link**, body containing:
+**If a link arrives instead**, the email template still needs changing:
+Supabase → **Authentication → Emails → Magic Link**, body containing:
 
       Your Cash Out sign-in code is: <strong>{{ .Token }}</strong>
 
-The `{{ .Token }}` part is what matters. A link opens in Safari and puts your
-session outside the installed app, which is why this app doesn't use one.
+`{{ .Token }}` is the part that matters. Save, then try signing in again — no
+redeploy needed for this one, it's a Supabase setting.
 
-### 3. Confirm the database tables exist — *action*
+**If you see a red error under the form**, paste it to me. It'll say what's
+wrong in plain language now.
 
-You'll find out as soon as you try to add a workplace: if saving fails, the
-migrations haven't been run.
+### Step 3 — Add your two workplaces (5 min)
 
-- [ ] Supabase → **Table Editor** — you should see `workplaces` and `shifts`
-- [ ] If not: **SQL Editor**, run `supabase/migrations/0001_initial_schema.sql`,
-      then `supabase/migrations/0002_conditional_anchor_date.sql`, in that order
+Have a recent pay stub from each job open. For **each** you'll enter:
 
-### 4. Put it on your phone — *action*
+- Base hourly wage
+- How often you're paid
+- **The first day of a recent pay period** — not the day you got paid
+- Whether it pays overtime, and the rate (usually 1.5)
+- Which of these the job actually reports to you:
+  *total sales · tip-out paid · event type · number of guests · notes*
 
-- [ ] Open the Vercel URL **in Safari** on your iPhone → Share → **Add to Home
-      Screen**. It has to be Safari; Chrome can't install a PWA on iOS.
+- [ ] **Lumen Field**
+- [ ] **Climate Pledge Arena** (Moët & Chandon Imperial Lounge)
 
-### 5. Get your pay stub details together — *action*
+**If saving fails**, the database tables were never created. Supabase →
+**SQL Editor** → run `supabase/migrations/0001_initial_schema.sql`, then
+`supabase/migrations/0002_conditional_anchor_date.sql`, in that order.
 
-The workplace form is built and waiting. For **each** job, have a recent pay
-stub in front of you and find:
+### Step 4 — Put it on your phone (1 min)
 
-- [ ] **Lumen Field** — base hourly wage · how often you're paid · the first day
-      of a recent pay period · whether it pays overtime (and at what rate)
-- [ ] **Climate Pledge Arena** (Moët & Chandon Imperial Lounge) — the same four
+- [ ] Open the site **in Safari** on your iPhone → Share → **Add to Home Screen**
 
-You'll also pick, per job, which of these it actually reports to you:
-*total sales · tip-out paid · event type · number of guests · notes*. Only tick
-what you can really find out. If something you'd want is missing from that list,
-tell me — that's the PRD's open question about the field list, and now you can
-answer it by looking at the real form.
-
-### 6. Confirm one decision I made for you — *decision*
-
-Your PRD says to capture an **anchor pay date**. I built it as the **first day
-of a pay period** instead, because a pay date usually falls *after* the period it
-covers, which makes "which period does this shift belong to?" ambiguous.
-
-The form asks: *"First day of a recent pay period — not the day you got paid."*
-
-- [ ] **Fine as-is**, or
-- [ ] **You'd rather enter the pay date** and have the app work backwards
-      (doable, but needs a rule for how many days before payday the period ends)
+Has to be Safari. Chrome can't install a PWA on iOS.
 
 ---
 
-## Phase 3 — Conversational shift logging
+# 📨 Then send me one message
 
-**This is what I'm building next**, and the phase where your input matters most.
+This is what unblocks everything else. **Answer these in a single reply and I
+can build the rest without stopping to ask.**
 
-### Actions
+### A. How you actually talk about a shift
 
-- [ ] **Write down 10–20 examples of how you'd actually describe a shift**,
-      in your own words, the way you'd say it at 1am — not cleaned up.
-      Things like *"Lumen, four til close, 180 on cards and like 40 cash."*
+Write **10–20 examples** of how you'd really describe a shift — the way you'd
+say it at 1am, not cleaned up. For example:
 
-      This is the single most useful thing you can give me. The parser gets
-      tuned against how *you* talk, not textbook phrasing, and I can't guess it.
-      Include the messy ones: trailing off, correcting yourself, vague times.
+> *"Lumen, four til close, 180 on cards and like 40 cash"*
+> *"did the lounge last night, 6 to 1, 220 in tips, tipped out 35"*
 
-- [ ] Confirm how you'll dictate — iOS keyboard mic, or Wispr Flow. Both are
-      OS-level so the app doesn't care, but worth knowing what you'll really use.
+Include the messy ones — trailing off, correcting yourself, vague times, saying
+the venue two different ways. **The parser gets tuned against how you talk, and
+I can't guess it.** This is the single highest-value thing you can give me.
 
-### Decisions
+### B. Five decisions
 
-- [ ] **What should "til close" mean?** Options: leave the clock-out blank for
-      you to fill in, or store a default closing time per workplace and
-      pre-fill it (still editable). The second is faster but is the app
-      guessing at a number — and catching wrong numbers is the whole point.
-- [ ] **How hard should the confirmation card push back on missing data?**
-      My default: anything you didn't say renders as an empty field to fill,
-      never as a guess. Confirm that's what you want.
+1. **Pay period anchor** — the form asks for *"first day of a recent pay
+   period"* rather than your pay date, because a pay date falls *after* the
+   period it covers. Fine as-is, or would you rather enter the pay date?
 
----
+2. **"Til close"** — when you don't say an end time, should the app leave it
+   blank for you to fill, or pre-fill a default closing time per workplace
+   (still editable)? *My lean: leave it blank. The app guessing at a number is
+   the thing this app exists to prevent.*
 
-## Phase 4 — Shift history
+3. **Missing data on the confirmation card** — anything you didn't say shows as
+   an empty field, never a guess. Confirm that's what you want.
 
-No decisions expected. If you want filters beyond "by workplace," say so.
+4. **Which number leads the pay-period summary** — what the employer owed you
+   (hours × wage + tips), or what you actually took home (minus tip-out)?
+   *My lean: employer-owed first, since checking a pay stub is the point;
+   take-home underneath.*
 
----
+5. **Friends** — self-serve signup, or do you provision accounts?
+   *My lean: self-serve. Hand-provisioning becomes a chore fast, and row-level
+   security is what keeps everyone's data separate.*
 
-## Phase 5 — Pay-period summary
-
-### Decisions
-
-- [ ] **Which number leads?** There are two, and they differ:
-  - **What the employer owed you** — hours × wage + tips. This is what you hold
-    against the pay stub.
-  - **What you actually took home** — the same, minus tip-out.
-
-  My recommendation: lead with the employer-owed figure, since paycheck-checking
-  is the reason the app exists, and show take-home underneath.
+Saying *"go with your leans"* to any of these is a complete answer.
 
 ---
 
-## Phase 6 — Deploy and actually use it
+# 🏁 Distance to done
 
-Deploying moved up to step 5 — it's how you'll use the app at all, not a
-final step. What's left here is the part that can't be rushed.
+Honest version: **tomorrow won't close this out, but it clears the runway.**
+The MVP is five features and two are finished.
 
-### Actions
+| MVP feature | State |
+|---|---|
+| 1. Multi-user auth | ✅ Built |
+| 2. Workplace setup | ✅ Built |
+| 3. Conversational shift logging | ⬜ Next — the actual product |
+| 4. Shift history | ⬜ |
+| 5. Pay-period summary | ⬜ |
 
-- [ ] Get an Anthropic API key at
-      [console.anthropic.com](https://console.anthropic.com) → **API Keys**,
-      and add it to Vercel as `ANTHROPIC_API_KEY`, then redeploy
-      *(cost for your usage will be pennies a month — each shift is one tiny call)*
-- [ ] **Log real shifts for 2–3 weeks before showing anyone.** This is where
-      you find out how the parser handles your actual phrasing.
-- [ ] Hold one pay-period summary against a real pay stub and see if it matches.
+**What's left from me:** roughly 3–4 build sessions. Shift logging is the big
+one (the parser plus the confirmation card); history and the summary are
+smaller and mostly mechanical.
+
+**What's left from you:** tomorrow's 15 minutes, the one message above, and then
+the part nobody can shortcut — **logging real shifts for 2–3 weeks** and finding
+where the parser trips on your actual phrasing. That's also when you hold a
+summary against a real pay stub and see whether the numbers line up.
+
+**One thing you'll need before shift logging works:** an Anthropic API key from
+[console.anthropic.com](https://console.anthropic.com) → **API Keys**, added to
+Vercel as `ANTHROPIC_API_KEY`, then redeploy. No prefix on that one — it's a
+real secret, unlike the Supabase values. Cost will be pennies a month; each
+shift is one small call. **Not needed until I've built the parser**, so it can
+wait.
 
 ---
 
-## Phase 7 — Friends
+# Later — not blocking
 
-### Decisions
+**Phase 4 (shift history):** no decisions expected. Tell me if you want filters
+beyond "by workplace."
 
-- [ ] **PRD open question: self-serve signup, or do you provision accounts?**
-      My recommendation is self-serve — hand-provisioning becomes a chore in
-      about three weeks. Row-level security is what keeps everyone's data
-      separate; you just don't advertise the URL.
+**Phase 7 (friends):** covered by decision 5 above. Worth revisiting whether the
+repo should go private before you invite anyone — it's public right now, which
+is fine for the code but worth a deliberate choice.
 
 ---
 
@@ -190,7 +177,8 @@ Kept here so we don't relitigate them. Say the word if you want any reopened.
 | Separate `users` table | Skipped — Supabase's `auth.users` already has it | Aug 29 |
 | Anchor date for monthly / twice-monthly jobs | Not asked for — those periods follow the calendar, so the form hides the field | Aug 29 |
 | Deleting a workplace | Deletes its shifts too, behind a confirm step | Aug 29 |
-| Working without a local checkout | Yes — Supabase, Vercel and GitHub are all browser-only. Keys live in Vercel's dashboard, never in a committed file | Aug 29 |
+| Working without a local checkout | Yes — Supabase, Vercel and GitHub are browser-only | Aug 29 |
+| Supabase config location | Server-only, no `NEXT_PUBLIC_` prefix — nothing about the database connection reaches the browser | Aug 30 |
 
 ---
 
@@ -206,9 +194,9 @@ Kept here so we don't relitigate them. Say the word if you want any reopened.
 - [x] **Workplace setup** — add, edit and delete a workplace, with wage, pay
       period, overtime terms and the optional tracked fields
 - [x] Home screen listing your workplaces, with a first-run empty state
-- [x] Supabase project created and Vercel project connected
+- [x] Supabase project created, Vercel project connected
 - [x] **Deployed and live on Vercel** — the site loads
-- [x] Clear error messages for a misconfigured Supabase URL, instead of
+- [x] Plain-language errors for a misconfigured Supabase URL, instead of
       Supabase's own "Invalid path specified in request URL"
-- [x] Supabase config made server-only — nothing about the database connection
-      is shipped to the browser
+- [x] Supabase config made server-only, which also removed Vercel's
+      browser-exposure prompt
