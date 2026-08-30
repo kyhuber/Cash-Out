@@ -6,92 +6,64 @@ keys, pay stubs) and decisions only you can make.
 Claude maintains this file. It gets rewritten whenever an action is completed or
 a decision is made, so the top section is always what's actually blocking.
 
-**Last updated:** August 29, 2026 — reordered for a browser-only setup (no
-local checkout needed).
+**Last updated:** August 30, 2026 — the app is deployed and live. One config
+value to fix before sign-in works.
 
 ---
 
 ## ⏭️ Do these next
 
-None of this needs a copy of the code on your computer — Supabase, Vercel and
-GitHub are all browser-only. Steps 1–4 set up the database and sign-in, 5–6 get
-it onto your phone, and 7 is what you'll need in hand once it's there.
+The site is deployed and loading. Sign-in is failing on one wrong environment
+variable — fix that and you're in.
 
-### 1. Create a Supabase project — *action*
+### 1. Fix the Supabase URL in Vercel — *action* ⚠️
 
-- [ ] Go to [supabase.com](https://supabase.com) → **New project**
-- [ ] Pick the region closest to Seattle (`West US (Oregon)` or similar)
-- [ ] Save the database password somewhere safe — you'll want it later, and it
-      isn't shown again
+Sign-in currently fails with *"Invalid path specified in request URL"*. That
+means `NEXT_PUBLIC_SUPABASE_URL` is the **dashboard** address rather than the
+**project API** address.
 
-### 2. Copy the two Supabase keys somewhere handy — *action*
+- ❌ `https://supabase.com/dashboard/project/abcdefgh`
+- ✅ `https://abcdefgh.supabase.co`
 
-You'll paste these into Vercel in step 5. Nothing to install.
+- [ ] Supabase → **Project Settings → Data API** → copy **Project URL**
+      (short, ends in `.supabase.co`, no path, no trailing slash)
+- [ ] Vercel → **Project → Settings → Environment Variables** → update
+      `NEXT_PUBLIC_SUPABASE_URL`
+- [ ] **Redeploy** — Deployments → `⋯` on the latest → **Redeploy**.
+      Vercel bakes these in at build time, so editing the value alone does
+      nothing to the live site.
 
-- [ ] In the dashboard: **Project Settings → Data API** → copy the **Project URL**
-- [ ] **Project Settings → API Keys** → copy the **anon / publishable** key
-      (⚠️ *not* the `service_role` / secret key — that one bypasses all privacy
-      rules and must never leave the dashboard)
+The app now checks this on submit and will tell you plainly if the URL is still
+wrong, instead of showing the Supabase error.
 
-*(The anon key is safe to expose — row-level security is what protects your
-data. This repo is public, so never put a secret key in a file here.)*
+### 2. Sign in, and confirm the email sends a *code* — *action*
 
-### 3. Create the database tables — *action*
+- [ ] Enter your email on the live site and tap **Email me a code**
+- [ ] Check what arrives. You want a **6-digit code**, not a link.
 
-There are now **two** migration files, and they must be run **in order**.
-
-- [ ] Dashboard → **SQL Editor** → **New query**
-- [ ] Paste all of `supabase/migrations/0001_initial_schema.sql` → **Run**
-- [ ] New query again, paste all of
-      `supabase/migrations/0002_conditional_anchor_date.sql` → **Run**
-- [ ] Check **Table Editor** — you should see `workplaces` and `shifts`
-
-*(Skipping 0002 means the app will reject any workplace paid monthly or twice a
-month, because the schema will still demand a pay-period anchor date it no
-longer asks you for.)*
-
-### 4. Switch the sign-in email to send a code — *action* ⚠️
-
-**This is the one step that silently breaks sign-in if you skip it.**
-
-The app signs you in with a 6-digit code, not a magic link — a link would open
-in Safari and put your session outside the installed app. But Supabase sends a
-link by default.
-
-- [ ] Dashboard → **Authentication → Emails** → **Magic Link** template
-- [ ] Replace the body with something that sends the code instead of the link:
+If it's a link — or nothing useful arrives — the email template still needs
+changing: Supabase → **Authentication → Emails → Magic Link**, body containing:
 
       Your Cash Out sign-in code is: <strong>{{ .Token }}</strong>
 
-- [ ] The key part is `{{ .Token }}`. If the template still only has
-      `{{ .ConfirmationURL }}`, there's no code to type and sign-in will fail.
+The `{{ .Token }}` part is what matters. A link opens in Safari and puts your
+session outside the installed app, which is why this app doesn't use one.
 
-### 5. Deploy it — *action*
+### 3. Confirm the database tables exist — *action*
 
-Nothing here needs a copy of the code on your computer. Vercel builds straight
-from GitHub.
+You'll find out as soon as you try to add a workplace: if saving fails, the
+migrations haven't been run.
 
-- [ ] [vercel.com](https://vercel.com) → **Add New → Project → Import Git
-      Repository** → pick `kyhuber/Cash-Out`
-- [ ] On the import screen, under **Environment Variables**, add:
-      - `NEXT_PUBLIC_SUPABASE_URL` — the Project URL from step 2
-      - `NEXT_PUBLIC_SUPABASE_ANON_KEY` — the anon key from step 2
-- [ ] Deploy, then open the URL it gives you and sign in
+- [ ] Supabase → **Table Editor** — you should see `workplaces` and `shifts`
+- [ ] If not: **SQL Editor**, run `supabase/migrations/0001_initial_schema.sql`,
+      then `supabase/migrations/0002_conditional_anchor_date.sql`, in that order
 
-⚠️ Vercel bakes environment variables in **at build time**. If you change one
-later (Project → Settings → Environment Variables), the live site keeps the old
-value until you redeploy: **Deployments → `⋯` on the latest → Redeploy.**
-
-*(`ANTHROPIC_API_KEY` goes here too, but not until shift logging exists. It
-deliberately has no `NEXT_PUBLIC_` prefix, which is what keeps it off the
-browser.)*
-
-### 6. Put it on your phone — *action*
+### 4. Put it on your phone — *action*
 
 - [ ] Open the Vercel URL **in Safari** on your iPhone → Share → **Add to Home
       Screen**. It has to be Safari; Chrome can't install a PWA on iOS.
 
-### 7. Get your pay stub details together — *action*
+### 5. Get your pay stub details together — *action*
 
 The workplace form is built and waiting. For **each** job, have a recent pay
 stub in front of you and find:
@@ -106,7 +78,7 @@ what you can really find out. If something you'd want is missing from that list,
 tell me — that's the PRD's open question about the field list, and now you can
 answer it by looking at the real form.
 
-### 8. Confirm one decision I made for you — *decision*
+### 6. Confirm one decision I made for you — *decision*
 
 Your PRD says to capture an **anchor pay date**. I built it as the **first day
 of a pay period** instead, because a pay date usually falls *after* the period it
@@ -228,3 +200,7 @@ Kept here so we don't relitigate them. Say the word if you want any reopened.
 - [x] **Workplace setup** — add, edit and delete a workplace, with wage, pay
       period, overtime terms and the optional tracked fields
 - [x] Home screen listing your workplaces, with a first-run empty state
+- [x] Supabase project created and Vercel project connected
+- [x] **Deployed and live on Vercel** — the site loads
+- [x] Clear error messages for a misconfigured Supabase URL, instead of
+      Supabase's own "Invalid path specified in request URL"

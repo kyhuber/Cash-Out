@@ -4,6 +4,22 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
+/**
+ * A misconfigured Supabase URL or key throws from createClient(). Surfacing
+ * that as a form error puts the actionable message in front of whoever is
+ * setting the app up, instead of a blank 500 page.
+ */
+async function clientOrConfigError() {
+  try {
+    return { supabase: await createClient(), configError: null };
+  } catch (e) {
+    return {
+      supabase: null,
+      configError: e instanceof Error ? e.message : "Supabase is not configured.",
+    };
+  }
+}
+
 export type AuthState = {
   step: "email" | "code";
   email?: string;
@@ -31,7 +47,9 @@ export async function sendCode(
     return { step: "email", error: "That doesn't look like an email address." };
   }
 
-  const supabase = await createClient();
+  const { supabase, configError } = await clientOrConfigError();
+  if (!supabase) return { step: "email", email, error: configError };
+
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: { shouldCreateUser: true },
@@ -55,7 +73,9 @@ export async function verifyCode(
     return { ...prev, step: "code", email, error: "Enter the 6-digit code." };
   }
 
-  const supabase = await createClient();
+  const { supabase, configError } = await clientOrConfigError();
+  if (!supabase) return { step: "code", email, error: configError };
+
   const { error } = await supabase.auth.verifyOtp({
     email,
     token,

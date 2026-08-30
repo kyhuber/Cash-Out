@@ -5,10 +5,17 @@ import { SignInForm } from "./sign-in-form";
 export const dynamic = "force-dynamic";
 
 export default async function SignInPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Tolerate a broken Supabase config here so the form still renders and can
+  // show the real reason when the user submits it.
+  let user = null;
+  try {
+    const supabase = await createClient();
+    ({
+      data: { user },
+    } = await supabase.auth.getUser());
+  } catch {
+    user = null;
+  }
 
   if (user) redirect("/");
 
