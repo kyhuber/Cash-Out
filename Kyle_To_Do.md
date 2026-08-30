@@ -6,14 +6,16 @@ keys, pay stubs) and decisions only you can make.
 Claude maintains this file. It gets rewritten whenever an action is completed or
 a decision is made, so the top section is always what's actually blocking.
 
-**Last updated:** August 29, 2026 — after building workplace setup.
+**Last updated:** August 29, 2026 — reordered for a browser-only setup (no
+local checkout needed).
 
 ---
 
 ## ⏭️ Do these next
 
-Steps 1–4 get the app running. Step 5 is what you'll need in hand the first time
-you open it. Nothing below this section is urgent yet.
+None of this needs a copy of the code on your computer — Supabase, Vercel and
+GitHub are all browser-only. Steps 1–4 set up the database and sign-in, 5–6 get
+it onto your phone, and 7 is what you'll need in hand once it's there.
 
 ### 1. Create a Supabase project — *action*
 
@@ -22,13 +24,17 @@ you open it. Nothing below this section is urgent yet.
 - [ ] Save the database password somewhere safe — you'll want it later, and it
       isn't shown again
 
-### 2. Get the two keys into the app — *action*
+### 2. Copy the two Supabase keys somewhere handy — *action*
+
+You'll paste these into Vercel in step 5. Nothing to install.
 
 - [ ] In the dashboard: **Project Settings → Data API** → copy the **Project URL**
 - [ ] **Project Settings → API Keys** → copy the **anon / publishable** key
       (⚠️ *not* the `service_role` / secret key — that one bypasses all privacy
-      rules and must never go in the app)
-- [ ] In the repo: `cp .env.example .env.local` and paste both values in
+      rules and must never leave the dashboard)
+
+*(The anon key is safe to expose — row-level security is what protects your
+data. This repo is public, so never put a secret key in a file here.)*
 
 ### 3. Create the database tables — *action*
 
@@ -60,7 +66,32 @@ link by default.
 - [ ] The key part is `{{ .Token }}`. If the template still only has
       `{{ .ConfirmationURL }}`, there's no code to type and sign-in will fail.
 
-### 5. Get your pay stub details together — *action*
+### 5. Deploy it — *action*
+
+Nothing here needs a copy of the code on your computer. Vercel builds straight
+from GitHub.
+
+- [ ] [vercel.com](https://vercel.com) → **Add New → Project → Import Git
+      Repository** → pick `kyhuber/Cash-Out`
+- [ ] On the import screen, under **Environment Variables**, add:
+      - `NEXT_PUBLIC_SUPABASE_URL` — the Project URL from step 2
+      - `NEXT_PUBLIC_SUPABASE_ANON_KEY` — the anon key from step 2
+- [ ] Deploy, then open the URL it gives you and sign in
+
+⚠️ Vercel bakes environment variables in **at build time**. If you change one
+later (Project → Settings → Environment Variables), the live site keeps the old
+value until you redeploy: **Deployments → `⋯` on the latest → Redeploy.**
+
+*(`ANTHROPIC_API_KEY` goes here too, but not until shift logging exists. It
+deliberately has no `NEXT_PUBLIC_` prefix, which is what keeps it off the
+browser.)*
+
+### 6. Put it on your phone — *action*
+
+- [ ] Open the Vercel URL **in Safari** on your iPhone → Share → **Add to Home
+      Screen**. It has to be Safari; Chrome can't install a PWA on iOS.
+
+### 7. Get your pay stub details together — *action*
 
 The workplace form is built and waiting. For **each** job, have a recent pay
 stub in front of you and find:
@@ -75,7 +106,7 @@ what you can really find out. If something you'd want is missing from that list,
 tell me — that's the PRD's open question about the field list, and now you can
 answer it by looking at the real form.
 
-### 6. Confirm one decision I made for you — *decision*
+### 8. Confirm one decision I made for you — *decision*
 
 Your PRD says to capture an **anchor pay date**. I built it as the **first day
 of a pay period** instead, because a pay date usually falls *after* the period it
@@ -140,16 +171,15 @@ No decisions expected. If you want filters beyond "by workplace," say so.
 
 ## Phase 6 — Deploy and actually use it
 
+Deploying moved up to step 5 — it's how you'll use the app at all, not a
+final step. What's left here is the part that can't be rushed.
+
 ### Actions
 
-- [ ] Create a [Vercel](https://vercel.com) account and import this repo
-- [ ] Add the same env vars from `.env.local` to the Vercel project settings
 - [ ] Get an Anthropic API key at
       [console.anthropic.com](https://console.anthropic.com) → **API Keys**,
-      and add it to Vercel as `ANTHROPIC_API_KEY`
+      and add it to Vercel as `ANTHROPIC_API_KEY`, then redeploy
       *(cost for your usage will be pennies a month — each shift is one tiny call)*
-- [ ] On your iPhone, open the deployed URL **in Safari** → Share → **Add to
-      Home Screen**. It has to be Safari; Chrome can't install it on iOS.
 - [ ] **Log real shifts for 2–3 weeks before showing anyone.** This is where
       you find out how the parser handles your actual phrasing.
 - [ ] Hold one pay-period summary against a real pay stub and see if it matches.
@@ -182,6 +212,7 @@ Kept here so we don't relitigate them. Say the word if you want any reopened.
 | Separate `users` table | Skipped — Supabase's `auth.users` already has it | Aug 29 |
 | Anchor date for monthly / twice-monthly jobs | Not asked for — those periods follow the calendar, so the form hides the field | Aug 29 |
 | Deleting a workplace | Deletes its shifts too, behind a confirm step | Aug 29 |
+| Working without a local checkout | Yes — Supabase, Vercel and GitHub are all browser-only. Keys live in Vercel's dashboard, never in a committed file | Aug 29 |
 
 ---
 
