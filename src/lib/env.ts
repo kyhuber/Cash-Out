@@ -1,24 +1,58 @@
 /**
- * Reads and validates public Supabase config. Resolved lazily (not at module
- * load) so `next build` succeeds in an environment without them configured.
+ * Reads and validates Supabase config.
+ *
+ * Every Supabase call in this app happens on the server — server components and
+ * server actions — so these are deliberately NOT `NEXT_PUBLIC_`. Nothing about
+ * the connection reaches the browser bundle.
+ *
+ * The `NEXT_PUBLIC_` names are still accepted as a fallback so an existing
+ * deployment keeps working. If browser-side Supabase is ever needed (realtime,
+ * say), the prefixed names become required again for that code path.
  */
-export function supabaseConfig() {
-  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+function readEnv() {
+  // An empty or whitespace-only variable counts as unset, so a blank
+  // SUPABASE_URL can't shadow a working NEXT_PUBLIC_SUPABASE_URL.
+  const first = (...values: (string | undefined)[]) =>
+    values.map((v) => v?.trim()).find((v) => v);
 
-  if (!rawUrl || !anonKey) {
+  return {
+    url: first(process.env.SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_URL),
+    anonKey: first(
+      process.env.SUPABASE_ANON_KEY,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    ),
+  };
+}
+
+/** Throws a message worth reading if the config is missing or malformed. */
+export function supabaseConfig() {
+  const { url, anonKey } = readEnv();
+
+  if (!url || !anonKey) {
     throw new Error(
-      "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY. " +
+      "Missing SUPABASE_URL or SUPABASE_ANON_KEY. " +
         "Copy .env.example to .env.local and fill in your Supabase project values.",
     );
   }
 
-  return { url: normalizeSupabaseUrl(rawUrl), anonKey };
+  return { url: normalizeSupabaseUrl(url), anonKey };
+}
+
+/** Same, but yields null instead of throwing — for code that must not fail hard. */
+export function optionalSupabaseConfig() {
+  const { url, anonKey } = readEnv();
+  if (!url || !anonKey) return null;
+
+  try {
+    return { url: normalizeSupabaseUrl(url), anonKey };
+  } catch {
+    return null;
+  }
 }
 
 /**
  * Supabase's own error for a malformed base URL is "Invalid path specified in
- * request URL", which gives no hint that the environment variable is at fault.
+ * request URL", which gives no hint that an environment variable is at fault.
  * The usual cause is pasting the dashboard address instead of the project API
  * URL, so check for that here and say so plainly.
  */
@@ -30,20 +64,18 @@ export function normalizeSupabaseUrl(rawUrl: string): string {
     parsed = new URL(trimmed);
   } catch {
     throw new Error(
-      `NEXT_PUBLIC_SUPABASE_URL is not a valid URL: "${rawUrl}". ` +
+      `SUPABASE_URL is not a valid URL: "${rawUrl}". ` +
         "It should look like https://your-project-ref.supabase.co",
     );
   }
 
   if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") {
-    throw new Error(
-      `NEXT_PUBLIC_SUPABASE_URL must use https, got "${parsed.protocol}//".`,
-    );
+    throw new Error(`SUPABASE_URL must use https, got "${parsed.protocol}//".`);
   }
 
   if (parsed.pathname !== "/") {
     throw new Error(
-      `NEXT_PUBLIC_SUPABASE_URL should be your project's base URL with no path, ` +
+      `SUPABASE_URL should be your project's base URL with no path, ` +
         `but it has one: "${parsed.pathname}". ` +
         "The dashboard address (https://supabase.com/dashboard/project/...) is a " +
         "different thing — copy the Project URL from Project Settings → Data API, " +

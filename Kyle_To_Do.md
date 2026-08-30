@@ -6,8 +6,8 @@ keys, pay stubs) and decisions only you can make.
 Claude maintains this file. It gets rewritten whenever an action is completed or
 a decision is made, so the top section is always what's actually blocking.
 
-**Last updated:** August 30, 2026 — the app is deployed and live. One config
-value to fix before sign-in works.
+**Last updated:** August 30, 2026 — Supabase config is now server-only, so
+Vercel's public-prefix prompt no longer applies.
 
 ---
 
@@ -16,40 +16,31 @@ value to fix before sign-in works.
 The site is deployed and loading. Sign-in is failing on one wrong environment
 variable — fix that and you're in.
 
-### 1. Fix the Supabase URL in Vercel — *action* ⚠️
+### 1. Set the two Supabase variables in Vercel — *action* ⚠️
 
-Sign-in currently fails with *"Invalid path specified in request URL"*. That
-means `NEXT_PUBLIC_SUPABASE_URL` is the **dashboard** address rather than the
-**project API** address.
+The variable **names have changed**. Every Supabase call in this app happens on
+the server, so the values never reach the browser and don't need — or want —
+the `NEXT_PUBLIC_` prefix. Vercel's "expose to the browser" prompt disappears,
+and **Secret is the correct type**.
 
-- ❌ `https://supabase.com/dashboard/project/abcdefgh`
-- ✅ `https://abcdefgh.supabase.co`
+In Vercel → **Project → Settings → Environment Variables**:
 
-- [ ] Supabase → **Project Settings → Data API** → copy **Project URL**
-      (short, ends in `.supabase.co`, no path, no trailing slash)
-- [ ] Vercel → **Project → Settings → Environment Variables** → update
-      `NEXT_PUBLIC_SUPABASE_URL`
+- [ ] Add `SUPABASE_URL` = `https://orgezkldagwaifmnnbse.supabase.co`
+      (Supabase → Project Settings → **Data API** → Project URL. No path, no
+      trailing slash.)
+- [ ] Add `SUPABASE_ANON_KEY` = the anon / publishable key
+      (Supabase → Project Settings → **API Keys**. Not the `service_role` key.)
+- [ ] Delete the old `NEXT_PUBLIC_SUPABASE_URL` and
+      `NEXT_PUBLIC_SUPABASE_ANON_KEY` once the new pair is saved
 - [ ] **Redeploy** — Deployments → `⋯` on the latest → **Redeploy**.
-      Vercel bakes these in at build time, so editing the value alone does
-      nothing to the live site.
+      Vercel applies environment changes at build time, so editing a value
+      alone does nothing to the live site.
 
-**If Vercel warns about the public prefix**, choose **Config**. It's asking you
-to confirm that `NEXT_PUBLIC_` really should reach the browser — and for these
-two it must, because the browser talks to Supabase directly. Neither is a
-secret: the URL is visible in every request, and the anon key grants nothing on
-its own (row-level security decides what anyone can actually read or write).
+The old prefixed names still work as a fallback, so nothing breaks while you
+switch over. Deleting them afterwards just keeps things tidy.
 
-| Variable | Vercel type |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Config |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Config |
-| `ANTHROPIC_API_KEY` (later) | Environment Variable — **private** |
-
-Don't remove the `NEXT_PUBLIC_` prefix. It's what makes the value reachable
-from the browser; without it the app can't connect to Supabase at all.
-
-The app now checks this on submit and will tell you plainly if the URL is still
-wrong, instead of showing the Supabase error.
+When you add `ANTHROPIC_API_KEY` later, that one is a **real** secret — it has
+no prefix for the same reason, and must never get one.
 
 ### 2. Sign in, and confirm the email sends a *code* — *action*
 
@@ -219,3 +210,5 @@ Kept here so we don't relitigate them. Say the word if you want any reopened.
 - [x] **Deployed and live on Vercel** — the site loads
 - [x] Clear error messages for a misconfigured Supabase URL, instead of
       Supabase's own "Invalid path specified in request URL"
+- [x] Supabase config made server-only — nothing about the database connection
+      is shipped to the browser

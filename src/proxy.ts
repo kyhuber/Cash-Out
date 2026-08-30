@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { optionalSupabaseConfig } from "@/lib/env";
 
 /**
  * Next 16 renamed Middleware to Proxy; the behaviour is unchanged.
@@ -12,12 +13,11 @@ import { NextResponse, type NextRequest } from "next/server";
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   // Not configured yet (fresh clone, CI build) — pass the request through.
-  if (!url || !anonKey) return response;
+  const config = optionalSupabaseConfig();
+  if (!config) return response;
 
-  const supabase = createServerClient(url, anonKey, {
+  const supabase = createServerClient(config.url, config.anonKey, {
     cookies: {
       getAll() {
         return request.cookies.getAll();
