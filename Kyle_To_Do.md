@@ -33,6 +33,21 @@ means `NEXT_PUBLIC_SUPABASE_URL` is the **dashboard** address rather than the
       Vercel bakes these in at build time, so editing the value alone does
       nothing to the live site.
 
+**If Vercel warns about the public prefix**, choose **Config**. It's asking you
+to confirm that `NEXT_PUBLIC_` really should reach the browser — and for these
+two it must, because the browser talks to Supabase directly. Neither is a
+secret: the URL is visible in every request, and the anon key grants nothing on
+its own (row-level security decides what anyone can actually read or write).
+
+| Variable | Vercel type |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Config |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Config |
+| `ANTHROPIC_API_KEY` (later) | Environment Variable — **private** |
+
+Don't remove the `NEXT_PUBLIC_` prefix. It's what makes the value reachable
+from the browser; without it the app can't connect to Supabase at all.
+
 The app now checks this on submit and will tell you plainly if the URL is still
 wrong, instead of showing the Supabase error.
 
