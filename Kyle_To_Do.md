@@ -6,277 +6,224 @@ keys, pay stubs) and decisions only you can make.
 Claude maintains this file. It gets rewritten whenever an action is completed or
 a decision is made, so the top section is always what's actually blocking.
 
-**Last updated:** August 31, 2026 — custom SMTP is required before the email
-templates can be edited. Start at "Tomorrow morning".
+**Last updated:** August 31, 2026 — you're signed in and both workplaces are
+set up. Everything from the setup checklist is done and has been cleared out.
+Next up is **shift logging**, the actual product. Start at "Do these next".
 
 ---
 
-# ☀️ Tomorrow morning — start here
+# 🎯 Do these next
 
-**About 25 minutes of clicking, then one message back to me.** Do them in order;
-each one confirms the previous worked.
+**Two things, about 20 minutes.** Together they unblock the whole core of the
+app — the part where you talk at your phone and it files a shift.
 
-### Step 1 — Fix the two Vercel variables (5 min)
+### 1. Get an Anthropic API key (5 min)
 
-The names changed today. Vercel → **Project → Settings → Environment Variables**:
+This is what reads *"Lumen, four til close, 180 on cards"* and turns it into
+numbers. Nothing about shift logging works without it.
 
-| Add this | Value |
+**a. Create the key**
+
+- [ ] [console.anthropic.com](https://console.anthropic.com) → **API Keys** →
+      **Create Key**. Name it `Cash Out`.
+- [ ] Copy it (starts `sk-ant-`). Like the Google app password, it's shown once.
+
+**b. Put $5 of credit on the account**
+
+- [ ] Console → **Billing** → add credit. **$5 is the minimum.**
+
+⚠️ **Do this even though it feels premature.** A brand-new key with a $0 balance
+doesn't fail at sign-up — it fails on the *first shift you try to log*, with a
+"credit balance is too low" error that looks like a bug in the app. Cheaper to
+rule out now.
+
+Cost is genuinely trivial: roughly a cent or two per shift. At the rate you'd
+actually log, $5 covers something like a year.
+
+**c. Add it to Vercel**
+
+Vercel → **Project → Settings → Environment Variables**:
+
+| Name | Value |
 |---|---|
-| `SUPABASE_URL` | `https://orgezkldagwaifmnnbse.supabase.co` |
-| `SUPABASE_PUBLISHABLE_KEY` | Supabase → Project Settings → **API Keys** → the **publishable** key (starts `sb_publishable_`) |
+| `ANTHROPIC_API_KEY` | the `sk-ant-...` key |
 
-**On the two keys you're seeing:** Supabase replaced the old anon key with the
-**publishable** key — same low privileges, same row-level security behaviour,
-just a new format. The anon key under *Legacy keys* still works, but it's being
-retired, so use the publishable one. I verified the app handles it identically.
-
-⚠️ **Do not use the secret key** (`sb_secret_...`, the one right next to it). It
-bypasses row-level security, which would show every user everyone else's shifts.
-The app now refuses to start if it finds one there, so a slip fails loudly
-rather than quietly leaking data.
-
-- [ ] Add both. **Secret is the right *Vercel type*** — that's Vercel's storage
-      setting, unrelated to Supabase's secret key. The browser-exposure prompt
-      won't appear, because these no longer go to the browser at all.
-- [ ] Delete the old `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- [ ] Add it. **Secret** is the right Vercel type. No `NEXT_PUBLIC_` prefix —
+      unlike the Supabase values, this one is a real secret and must never reach
+      a browser.
 - [ ] **Redeploy** — Deployments → `⋯` on the latest → **Redeploy**
 
-⚠️ The redeploy is not optional. Vercel applies environment changes at build
-time, so the settings page will show your new values while the live site keeps
-serving the old ones.
+⚠️ Same trap as last time: Vercel applies environment changes at build time, so
+the settings page will show the key while the live site doesn't have it.
 
-### Step 2 — Turn on custom SMTP (10 min)
-
-Supabase's built-in email provider won't work for this project, for two
-reasons — the second is the one that matters:
-
-1. Since **June 3, 2026**, new free-tier projects on it **can't edit email
-   templates**. That's the wall you hit.
-2. It sends **2 emails per hour, project-wide, and only to addresses on your
-   project's team.** Your friends could never receive a sign-in code from it.
-
-So this isn't a workaround for the template lock — it's a step this project
-needed anyway. Custom SMTP is free on every Supabase plan, and **no code
-changes are needed**.
-
-**Use Gmail.** You already have the account, and unlike most providers it needs
-no domain and no DNS records.
-
-**a. Create a Google app password**
-
-⚠️ **There is no "App passwords" link on the Security page.** Google hides it.
-Go straight to the URL:
-
-- [ ] **https://myaccount.google.com/apppasswords**
-- [ ] App: **Mail**. Device: **Other** → name it `Supabase`
-- [ ] Copy the 16-character password. It's shown once, and it is *not* your
-      Gmail password.
-
-**If that page errors or redirects you:** 2-Step Verification isn't on yet, and
-app passwords don't exist as a feature until it is. Google Account → **Security
-→ 2-Step Verification** → turn it on, then go back to the link.
-
-**If 2-Step Verification is already on and the page still won't open:** you
-probably have it set up with *only* a security key or passkey, which keeps app
-passwords hidden. Add a second method — phone or an authenticator app — and
-they appear.
-
-*("Linked apps" on the Security page is something else entirely — third-party
-account access, not SMTP credentials.)*
-
-**If app passwords are genuinely unavailable on your account**, tell me and
-we'll switch to [Brevo](https://www.brevo.com) instead: free tier, and it
-verifies a single sender address rather than requiring you to own a domain.
-Ten more minutes, same five fields in Supabase, no code changes either way.
-
-**b. Enter it in Supabase**
-
-Supabase → **Authentication → Emails → SMTP Settings** → *Enable Custom SMTP*:
-
-| Field | Value |
-|---|---|
-| Host | `smtp.gmail.com` |
-| Port | `587` |
-| Username | `kyhuber@gmail.com` |
-| Password | the 16-character app password |
-| Sender email | `kyhuber@gmail.com` |
-| Sender name | `Cash Out` |
-
-- [ ] Save
-
-⚠️ Sender email must match the username. Gmail won't send as an address you
-don't own.
-
-Sign-in emails will arrive from your personal Gmail. Fine for you and a few
-friends. If you ever want them from a branded address, that's the point to move
-to a provider like Resend and verify a domain — not now.
-
-### Step 3 — Edit both email templates (3 min)
-
-With custom SMTP on, the Templates tab unlocks.
-
-Supabase → **Authentication → Emails → Templates**. Two of them:
-
-| Template | When it's sent |
-|---|---|
-| **Confirm signup** | Your **first ever** sign-in, when the account is created |
-| **Magic Link** | Every sign-in after that |
-
-In **both**, replace the `{{ .ConfirmationURL }}` link with:
-
-      Your Cash Out sign-in code is: <strong>{{ .Token }}</strong>
-
-- [ ] Confirm signup edited
-- [ ] Magic Link edited
-
-`{{ .Token }}` is the part that matters. Editing only Magic Link leaves your
-first sign-in broken, because creating the account uses the other template.
-
-### Step 4 — Sign in (2 min)
-
-- [ ] Open the site, enter your email, tap **Email me a code**
-- [ ] A numeric code should arrive. Type it in.
-
-*(Supabase sends 6 to 10 digits depending on how your project was set up — yours
-sends 8. The form accepts any length in that range, so there's nothing to
-change in Supabase.)*
-
-No redeploy needed for any of steps 2–4 — these are all Supabase settings.
-
-**If you see a red error under the form**, paste it to me; it'll say what's
-wrong in plain language.
-
-### Step 5 — Add your two workplaces (5 min)
-
-Have a recent pay stub from each job open. For **each** you'll enter:
-
-- Base hourly wage
-- How often you're paid
-- **The first day of a recent pay period** — not the day you got paid
-- Whether it pays overtime, and the rate (usually 1.5)
-- Which of these the job actually reports to you:
-  *total sales · tip-out paid · event type · number of guests · notes*
-
-- [ ] **Lumen Field**
-- [ ] **Climate Pledge Arena** (Moët & Chandon Imperial Lounge)
-
-**If saving fails**, the database tables were never created. Supabase →
-**SQL Editor** → run `supabase/migrations/0001_initial_schema.sql`, then
-`supabase/migrations/0002_conditional_anchor_date.sql`, in that order.
-
-### Step 6 — Put it on your phone (1 min)
-
-- [ ] Open the site **in Safari** on your iPhone → Share → **Add to Home Screen**
-
-Has to be Safari. Chrome can't install a PWA on iOS.
+*Nothing in the app uses this key yet — I haven't built the parser. Adding it
+now just means I'm not waiting on you when I do.*
 
 ---
 
-# 📨 Then send me one message
+### 2. Send me how you actually talk about a shift (15 min)
 
-This is what unblocks everything else. **Answer these in a single reply and I
-can build the rest without stopping to ask.**
+**This is the single highest-value thing you can give me, and nothing
+substitutes for it.** The parser gets tuned against your real phrasing, and I
+can't invent it — if I guess, I'll build something that works on sentences you'd
+never say.
 
-### A. How you actually talk about a shift
-
-Write **10–20 examples** of how you'd really describe a shift — the way you'd
-say it at 1am, not cleaned up. For example:
+**a. Write 10–20 examples.** How you'd really describe a shift at 1am, tired,
+one-handed. Not cleaned up.
 
 > *"Lumen, four til close, 180 on cards and like 40 cash"*
 > *"did the lounge last night, 6 to 1, 220 in tips, tipped out 35"*
 
-Include the messy ones — trailing off, correcting yourself, vague times, saying
-the venue two different ways. **The parser gets tuned against how you talk, and
-I can't guess it.** This is the single highest-value thing you can give me.
+**Deliberately include the messy ones** — trailing off, correcting yourself
+mid-sentence, vague times, forgetting to say where you were, saying a number two
+different ways. Those are the cases that decide whether this app is usable or
+annoying. Clean examples teach me nothing I don't already know.
 
-### B. Five decisions
+**b. Tell me what you call each place out loud.** Now that both workplaces
+exist, the parser has to match what you say against what's actually in the
+database. So: every name you'd realistically use for each — *"Lumen," "the
+field," "Lumen Field," "the lounge," "CPA," "Climate Pledge," "Moët"* — and
+which workplace each one means.
 
-1. **Pay period anchor** — the form asks for *"first day of a recent pay
-   period"* rather than your pay date, because a pay date falls *after* the
-   period it covers. Fine as-is, or would you rather enter the pay date?
-
-2. **"Til close"** — when you don't say an end time, should the app leave it
-   blank for you to fill, or pre-fill a default closing time per workplace
-   (still editable)? *My lean: leave it blank. The app guessing at a number is
-   the thing this app exists to prevent.*
-
-3. **Missing data on the confirmation card** — anything you didn't say shows as
-   an empty field, never a guess. Confirm that's what you want.
-
-4. **Which number leads the pay-period summary** — what the employer owed you
-   (hours × wage + tips), or what you actually took home (minus tip-out)?
-   *My lean: employer-owed first, since checking a pay stub is the point;
-   take-home underneath.*
-
-5. **Friends** — self-serve signup, or do you provision accounts?
-   *My lean: self-serve. Hand-provisioning becomes a chore fast, and row-level
-   security is what keeps everyone's data separate.*
-
-Saying *"go with your leans"* to any of these is a complete answer.
+**c. Roughly when does a normal shift run at each?** Just typical start and end.
+This is what lets *"til close"* and *"the usual"* resolve to something sane
+instead of nothing.
 
 ---
 
-# 🏁 Distance to done
+### 3. Three decisions (2 min)
 
-Honest version: **tomorrow won't close this out, but it clears the runway.**
-The MVP is five features and two are finished.
+These shape how the confirmation card behaves. **"Go with your leans" is a
+complete answer to all three.**
+
+The principle underneath all of them: **anything you didn't say shows up as an
+empty field, never a guess.** The entire reason this app exists is catching
+numbers that are wrong — so it can't quietly invent one either. Say the word if
+you disagree with that; everything else follows from it.
+
+1. **"Til close"** — when you don't say an end time, leave it blank for you to
+   fill, or pre-fill a default closing time for that workplace (still editable)?
+   *My lean: blank.* A pre-filled time is the app guessing at a number, and a
+   wrong-but-plausible 2:00am is worse than an obvious empty box — you'd never
+   catch it.
+
+2. **The date, when you don't say one** — default to today, or leave it blank?
+   *My lean: today.* This is the one field where I'd break the no-guessing rule:
+   you'll almost always log right after the shift, the date sits in plain sight
+   on the card, and a wrong date is obvious in a way a wrong dollar figure isn't.
+   Tell me if you'd rather it stayed strict.
+
+3. **Which workplace, when you don't say** — you have two, so the card can just
+   ask you to pick, with neither pre-selected. *My lean: ask.* Guessing "probably
+   Lumen, that's where he usually is" files tips against the wrong job and the
+   wrong wage, and you'd have no reason to look twice.
+
+---
+
+# 🔎 One thing worth double-checking
+
+**Your two anchor dates.** The workplace form asked for *"the first day of a
+recent pay period"* — **not** the day you got paid. Those are different dates,
+usually a week or two apart.
+
+If a pay date went in by mistake, nothing breaks and nothing looks wrong — every
+pay-period summary is just silently shifted, and you'd only find out by holding
+one against a stub and wondering why it didn't match. Two-minute check, worth
+doing before there's any data in there:
+
+- [ ] Open each workplace and look at the date it shows
+- [ ] On your stub, find the **pay period** range (something like
+      *"08/04/2026 – 08/17/2026"*). The date in the app should be the **start**
+      of that range — not the *pay date* or *check date* printed near it.
+
+Off? Just edit the workplace. Nothing else has to change.
+
+*(For a job paid monthly or twice a month there's no date to check — those
+periods follow the calendar, so the form doesn't ask.)*
+
+---
+
+# 📱 Small, if you haven't yet
+
+- [ ] Open the site **in Safari** on your iPhone → Share → **Add to Home Screen**
+
+Has to be Safari; Chrome can't install a PWA on iOS. Worth doing before you
+start logging real shifts — the whole point is that it's one tap away when
+you're walking to your car, not a browser tab you have to go find.
+
+---
+
+# 🏁 Where this stands
+
+The MVP is five features. **Two are done and working** — you proved both today
+by signing in and setting up two jobs.
 
 | MVP feature | State |
 |---|---|
-| 1. Multi-user auth | ✅ Built |
-| 2. Workplace setup | ✅ Built |
-| 3. Conversational shift logging | ⬜ Next — the actual product |
+| 1. Multi-user auth | ✅ Built — you're signed in |
+| 2. Workplace setup | ✅ Built — both jobs in |
+| 3. Conversational shift logging | 🔨 **Next** — waiting on the two items above |
 | 4. Shift history | ⬜ |
 | 5. Pay-period summary | ⬜ |
 
-**What's left from me:** roughly 3–4 build sessions. Shift logging is the big
-one (the parser plus the confirmation card); history and the summary are
-smaller and mostly mechanical.
+**What I build next (phase 3), once you've sent the examples:**
 
-**What's left from you:** tomorrow's 15 minutes, the one message above, and then
-the part nobody can shortcut — **logging real shifts for 2–3 weeks** and finding
-where the parser trips on your actual phrasing. That's also when you hold a
-summary against a real pay stub and see whether the numbers line up.
+- A single text box on the home screen. You type or dictate one sentence.
+- A server-side call to Claude that parses it into workplace, date, in/out
+  times, cash and card tips, plus whichever optional fields that workplace has
+  turned on.
+- **An editable confirmation card, always.** Nothing saves until you look at it.
+- Your raw sentence gets stored alongside the parsed result, so when the parser
+  trips on something I can see exactly what you said and fix it.
 
-**One thing you'll need before shift logging works:** an Anthropic API key from
-[console.anthropic.com](https://console.anthropic.com) → **API Keys**, added to
-Vercel as `ANTHROPIC_API_KEY`, then redeploy. No prefix on that one — it's a
-real secret, unlike the Supabase values. Cost will be pennies a month; each
-shift is one small call. **Not needed until I've built the parser**, so it can
-wait.
+**Then:** phase 4 (shift history — list, edit, delete) and phase 5 (pay-period
+summary). Both are smaller and mostly mechanical. Call it 3–4 build sessions
+total.
+
+**Then the part nobody can shortcut:** logging real shifts for two or three
+weeks, and telling me every time the parser gets something wrong. That's also
+when you first hold a summary up against an actual pay stub and find out whether
+the numbers line up — which is the entire reason this exists.
 
 ---
 
-# Later — not blocking
+# 📋 Later — not blocking
 
-**Phase 4 (shift history):** no decisions expected. Tell me if you want filters
-beyond "by workplace."
+**Which number leads the pay-period summary** (phase 5) — what the employer owed
+you (hours × wage + tips), or what you actually took home (after tip-out)?
+*My lean: employer-owed on top, since checking a stub is the point; take-home
+underneath.* No rush — I'll ask again when I build it.
 
-**A local copy of the code:** not needed, and not a gap in your backups —
-GitHub holds the durable copy. Worth doing only if you want to run the dev
-server, use Claude Code on your own machine, or read the code in an editor:
+**Friends** (phase 7) — self-serve signup, or do you provision accounts?
+*My lean: self-serve. Hand-provisioning becomes a chore fast, and row-level
+security is what keeps everyone's data separate anyway.*
+
+**Repo visibility** — it's public right now. Fine for the code (no keys are in
+it), but worth a deliberate choice before you invite anyone.
+
+**Shift history filters** — planned as "by workplace." Tell me if you want more.
+
+**A local copy of the code** — not needed, and not a gap in your backups; GitHub
+holds the durable copy. Only worth it if you want to run the dev server or read
+the code in an editor:
 
 ```bash
 git clone https://github.com/kyhuber/Cash-Out.git
 cd Cash-Out
 npm install
-cp .env.example .env.local    # fill in SUPABASE_URL and SUPABASE_ANON_KEY
+cp .env.example .env.local    # fill in SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY
 npm run dev
 ```
 
-Needs Git and Node 22. Note that pointing `.env.local` at your existing
-Supabase project means local testing writes to the same database the live app
-uses — a second free Supabase project keeps test data out of the real one.
-
-**Phase 7 (friends):** covered by decision 5 above. Worth revisiting whether the
-repo should go private before you invite anyone — it's public right now, which
-is fine for the code but worth a deliberate choice.
+Needs Git and Node 22. Pointing `.env.local` at your existing Supabase project
+means local testing writes to the same database the live app uses — a second
+free Supabase project keeps test data out of the real one.
 
 ---
 
 ## ✅ Already decided
 
-Kept here so we don't relitigate them. Say the word if you want any reopened.
+Kept so we don't relitigate them. Say the word if you want any reopened.
 
 | Decision | Choice | When |
 |---|---|---|
@@ -298,19 +245,17 @@ Kept here so we don't relitigate them. Say the word if you want any reopened.
 
 ## ✅ Already done
 
-- [x] Renamed `CLAUDE` → `CLAUDE.md` so project instructions load
-- [x] Renamed `PRD` → `Cash_Out_PRD.md` so it renders and the links resolve
-- [x] Database schema, with row-level security tested against cross-user reads,
-      writes and deletes, and constraints tested against bad data
-- [x] Email-code sign-in built end to end
-- [x] Installable PWA shell — manifest, icons, iOS home-screen support
-- [x] Pay-period and shift-duration math, unit tested
-- [x] **Workplace setup** — add, edit and delete a workplace, with wage, pay
-      period, overtime terms and the optional tracked fields
-- [x] Home screen listing your workplaces, with a first-run empty state
-- [x] Supabase project created, Vercel project connected
-- [x] **Deployed and live on Vercel** — the site loads
-- [x] Plain-language errors for a misconfigured Supabase URL, instead of
-      Supabase's own "Invalid path specified in request URL"
-- [x] Supabase config made server-only, which also removed Vercel's
-      browser-exposure prompt
+Trimmed to a summary — the step-by-step setup checklists are gone now that
+they're finished.
+
+- **Live and working:** Supabase project, Vercel deployment, environment
+  variables, custom SMTP through Gmail, both email templates emitting a code.
+- **Auth:** email-code sign-in built end to end, and confirmed working — you
+  signed in.
+- **Data:** schema with row-level security, tested against cross-user reads,
+  writes and deletes, plus constraints tested against bad input.
+- **Workplace setup:** add, edit and delete, with wage, pay period, overtime
+  terms and optional tracked fields. Confirmed working — two workplaces saved.
+- **PWA shell:** manifest, icons, iOS home-screen support.
+- **Math:** pay-period bucketing and shift duration, unit tested, matching the
+  database's own generated column.

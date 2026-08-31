@@ -20,9 +20,10 @@ See [`Cash_Out_PRD.md`](./Cash_Out_PRD.md) for the complete product requirements
 
 ## Status
 
-In progress. The foundation is in place: schema with row-level security, email
-sign-in, and the installable PWA shell. Workplace setup, conversational shift
-logging, history, and the pay-period summary are still to come.
+In progress. Two of the five MVP features are built and working: multi-user
+auth (email-code sign-in) and workplace setup, on top of a schema with
+row-level security and an installable PWA shell. Conversational shift logging,
+shift history, and the pay-period summary are still to come.
 
 ## What's needed from you
 
@@ -37,9 +38,9 @@ cp .env.example .env.local     # then fill in your Supabase values
 npm run dev
 ```
 
-Apply `supabase/migrations/0001_initial_schema.sql` to your Supabase project,
-and follow the note at the bottom of `.env.example` to switch the Magic Link
-email template over to sending a code.
+Apply the migrations in `supabase/migrations/` to your Supabase project in
+filename order, then follow the note at the bottom of `.env.example` to enable
+custom SMTP and switch both email templates over to sending a code.
 
 ```bash
 npm test              # unit tests
