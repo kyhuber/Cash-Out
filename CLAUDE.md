@@ -15,7 +15,9 @@ Read `Cash_Out_PRD.md` first — it's the full spec. This file is for the invari
   (`sb_secret_...`, formerly `service_role`) — it bypasses row-level security,
   which would show every user everyone else's shifts. `src/lib/env.ts` refuses
   to start with one; keep that check.
-- Sign-in is a 6-digit email code, never a magic link. A link opens in Safari,
+- Sign-in is a numeric email code, never a magic link. Its length is a
+  per-project Supabase setting (6-10 digits) and must never be hardcoded — see
+  `src/lib/auth.ts`. A link opens in Safari,
   so the session lands outside the installed PWA's storage container. This needs
   BOTH the "Confirm signup" template (a user's first sign-in, which creates the
   account) and the "Magic Link" template (every one after) to emit

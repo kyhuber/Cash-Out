@@ -135,7 +135,11 @@ first sign-in broken, because creating the account uses the other template.
 ### Step 4 — Sign in (2 min)
 
 - [ ] Open the site, enter your email, tap **Email me a code**
-- [ ] A **6-digit code** should arrive. Type it in.
+- [ ] A numeric code should arrive. Type it in.
+
+*(Supabase sends 6 to 10 digits depending on how your project was set up — yours
+sends 8. The form accepts any length in that range, so there's nothing to
+change in Supabase.)*
 
 No redeploy needed for any of steps 2–4 — these are all Supabase settings.
 
@@ -276,7 +280,7 @@ Kept here so we don't relitigate them. Say the word if you want any reopened.
 
 | Decision | Choice | When |
 |---|---|---|
-| Sign-in method | Email 6-digit code, not magic link or Google | Aug 29 |
+| Sign-in method | Emailed numeric code, not magic link or Google. Length is Supabase's setting (6-10), never hardcoded | Aug 29 |
 | Shifts store the wage they were worked at | Yes — a raise won't rewrite history | Aug 29 |
 | Overnight shifts | Belong to the date they started; duration wraps 24h | Aug 29 |
 | Tip-out | Tracked, so both gross and take-home can be shown | Aug 29 |

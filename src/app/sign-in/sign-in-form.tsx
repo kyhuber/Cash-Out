@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { sendCode, verifyCode, type AuthState } from "@/app/auth/actions";
+import { OTP_MAX_LENGTH } from "@/lib/auth";
 
 const initialEmail: AuthState = { step: "email" };
 const initialCode: AuthState = { step: "code" };
@@ -61,7 +62,7 @@ export function SignInForm() {
     <form action={codeAction} className="flex flex-col gap-3">
       <input type="hidden" name="email" value={email} />
       <label htmlFor="code" className="text-sm opacity-70">
-        Enter the 6-digit code sent to {email}
+        Enter the code sent to {email}
       </label>
       <input
         id="code"
@@ -70,12 +71,12 @@ export function SignInForm() {
         inputMode="numeric"
         // Lets iOS offer the code straight from the Mail notification.
         autoComplete="one-time-code"
-        pattern="\d{6}"
-        maxLength={6}
+        // Length is a per-project Supabase setting (6-10), not a constant.
+        maxLength={OTP_MAX_LENGTH}
         required
         autoFocus
-        placeholder="123456"
-        className={`${field} text-center text-2xl tracking-[0.4em]`}
+        placeholder="12345678"
+        className={`${field} text-center text-2xl tracking-[0.3em]`}
       />
       {codeState.error ? (
         <p className="text-sm text-red-600 dark:text-red-400">

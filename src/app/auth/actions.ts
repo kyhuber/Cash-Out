@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { isValidOtp, normalizeOtp } from "@/lib/auth";
 
 /**
  * A misconfigured Supabase URL or key throws from createClient(). Surfacing
@@ -27,10 +28,9 @@ export type AuthState = {
 };
 
 const emailSchema = z.email();
-const codeSchema = z.string().regex(/^\d{6}$/);
 
 /**
- * Sends a 6-digit code. Deliberately no `emailRedirectTo`: a magic link would
+ * Sends a numeric code. Deliberately no `emailRedirectTo`: a magic link would
  * open in Safari rather than the installed PWA, landing the session in a
  * different storage container than the app runs in. A code the user types
  * never leaves the app.
@@ -67,10 +67,15 @@ export async function verifyCode(
   formData: FormData,
 ): Promise<AuthState> {
   const email = String(formData.get("email") ?? "").trim();
-  const token = String(formData.get("code") ?? "").trim();
+  const token = normalizeOtp(String(formData.get("code") ?? ""));
 
-  if (!codeSchema.safeParse(token).success) {
-    return { ...prev, step: "code", email, error: "Enter the 6-digit code." };
+  if (!isValidOtp(token)) {
+    return {
+      ...prev,
+      step: "code",
+      email,
+      error: "Enter the code from the email — digits only.",
+    };
   }
 
   const { supabase, configError } = await clientOrConfigError();
