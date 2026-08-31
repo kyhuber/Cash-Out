@@ -6,7 +6,7 @@ keys, pay stubs) and decisions only you can make.
 Claude maintains this file. It gets rewritten whenever an action is completed or
 a decision is made, so the top section is always what's actually blocking.
 
-**Last updated:** August 31, 2026 — switched to Supabase's publishable key.
+**Last updated:** August 31, 2026 — two email templates need editing, not one.
 Start at "Tomorrow morning".
 
 ---
@@ -51,13 +51,22 @@ serving the old ones.
 
 **What should happen:** an email with a **6-digit code**. Type it in, you're in.
 
-**If a link arrives instead**, the email template still needs changing:
-Supabase → **Authentication → Emails → Magic Link**, body containing:
+**If a link arrives instead**, you need to edit **two** templates, not one.
+Supabase → **Authentication → Emails**:
+
+| Template | When it's sent |
+|---|---|
+| **Confirm signup** | Your **first ever** sign-in, when the account is created |
+| **Magic Link** | Every sign-in after that |
+
+A first sign-in creates your account, so Supabase uses *Confirm signup* — which
+is why editing only Magic Link still produced a link. In **both**, replace the
+`{{ .ConfirmationURL }}` link with:
 
       Your Cash Out sign-in code is: <strong>{{ .Token }}</strong>
 
-`{{ .Token }}` is the part that matters. Save, then try signing in again — no
-redeploy needed for this one, it's a Supabase setting.
+`{{ .Token }}` is the part that matters. Save both, then try again — no
+redeploy needed, these are Supabase settings, not Vercel ones.
 
 **If you see a red error under the form**, paste it to me. It'll say what's
 wrong in plain language now.

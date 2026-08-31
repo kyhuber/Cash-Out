@@ -76,14 +76,31 @@ export async function verifyCode(
   const { supabase, configError } = await clientOrConfigError();
   if (!supabase) return { step: "code", email, error: configError };
 
-  const { error } = await supabase.auth.verifyOtp({
-    email,
-    token,
-    type: "email",
-  });
+  // Which template issued the code depends on whether the account already
+  // existed: a first-ever sign-in goes through "Confirm signup", every later
+  // one through "Magic Link". Try the general email type first and fall back to
+  // the signup type, so a new account can't get stuck unable to verify.
+  let error = (await supabase.auth.verifyOtp({ email, token, type: "email" }))
+    .error;
 
   if (error) {
-    return { step: "code", email, error: "That code didn't work. Try again." };
+    const fallback = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: "signup",
+    });
+    // Report the first failure — it describes the expected flow.
+    if (!fallback.error) error = null;
+  }
+
+  if (error) {
+    return {
+      step: "code",
+      email,
+      error: /expire/i.test(error.message)
+        ? "That code has expired. Request a new one."
+        : "That code didn't work. Try again.",
+    };
   }
 
   redirect("/");

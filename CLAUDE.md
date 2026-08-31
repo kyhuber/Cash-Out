@@ -16,7 +16,10 @@ Read `Cash_Out_PRD.md` first — it's the full spec. This file is for the invari
   which would show every user everyone else's shifts. `src/lib/env.ts` refuses
   to start with one; keep that check.
 - Sign-in is a 6-digit email code, never a magic link. A link opens in Safari,
-  so the session lands outside the installed PWA's storage container.
+  so the session lands outside the installed PWA's storage container. This needs
+  BOTH the "Confirm signup" template (a user's first sign-in, which creates the
+  account) and the "Magic Link" template (every one after) to emit
+  `{{ .Token }}` — editing only the latter leaves first sign-in broken.
 - A shift stores the wage it was worked at (`hourly_wage_at_time`). A later
   raise must never retroactively change what a past shift was worth.
 - A shift belongs to the date it STARTED. Overnight shifts (20:00 -> 02:00) are
