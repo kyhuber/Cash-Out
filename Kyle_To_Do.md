@@ -64,12 +64,30 @@ no domain and no DNS records.
 
 **a. Create a Google app password**
 
-- [ ] Google Account → **Security** → **2-Step Verification** must be on
-      (required before app passwords are available)
-- [ ] Google Account → **Security** → **App passwords**
+⚠️ **There is no "App passwords" link on the Security page.** Google hides it.
+Go straight to the URL:
+
+- [ ] **https://myaccount.google.com/apppasswords**
 - [ ] App: **Mail**. Device: **Other** → name it `Supabase`
-- [ ] Copy the 16-character password it shows. It's shown once.
-      This is *not* your Gmail password.
+- [ ] Copy the 16-character password. It's shown once, and it is *not* your
+      Gmail password.
+
+**If that page errors or redirects you:** 2-Step Verification isn't on yet, and
+app passwords don't exist as a feature until it is. Google Account → **Security
+→ 2-Step Verification** → turn it on, then go back to the link.
+
+**If 2-Step Verification is already on and the page still won't open:** you
+probably have it set up with *only* a security key or passkey, which keeps app
+passwords hidden. Add a second method — phone or an authenticator app — and
+they appear.
+
+*("Linked apps" on the Security page is something else entirely — third-party
+account access, not SMTP credentials.)*
+
+**If app passwords are genuinely unavailable on your account**, tell me and
+we'll switch to [Brevo](https://www.brevo.com) instead: free tier, and it
+verifies a single sender address rather than requiring you to own a domain.
+Ten more minutes, same five fields in Supabase, no code changes either way.
 
 **b. Enter it in Supabase**
 
