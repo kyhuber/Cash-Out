@@ -29,8 +29,22 @@ Read `Cash_Out_PRD.md` first — it's the full spec. This file is for the invari
   raise must never retroactively change what a past shift was worth.
 - A shift belongs to the date it STARTED. Overnight shifts (20:00 -> 02:00) are
   one shift on the earlier date; `minutes_worked` wraps by 24h.
-- `pay_period_anchor_date` is the FIRST DAY of a known pay period, not the pay
-  date. Ask for it that way in the UI.
+- `pay_period_anchor_date` is the FIRST DAY of a pay period, never the pay date.
+  Onboarding asks for three dates off a stub — period start, period end, pay
+  date — and DERIVES the cadence from the first two (`payPeriodTypesMatching`).
+  Never ask the user to name their pay cadence: "every two weeks" and "twice a
+  month" are 26 and 24 paychecks a year and are constantly confused. When two
+  dates fit two cadences, ask; don't pick. (Only Feb 16-29 in a leap year does.)
+- The Anthropic parse call is `claude-opus-5` with adaptive thinking, at
+  `medium` effort — a deliberate latency/accuracy trade, since the confirmation
+  card is the real backstop. That effort setting is the first knob to turn if
+  the parser trips on real phrasing.
+- "Today" for a shift comes from the BROWSER, never the server. Vercel runs in
+  UTC and an evening shift on the US west coast is already tomorrow there, so a
+  server-side date resolves "last night" to the wrong day and can file a shift
+  into the wrong pay period.
+- `hourly_wage_at_time` and `overtime_multiplier_at_time` are snapshotted
+  server-side from the workplace row. Never accept them from a form.
 - `src/lib/pay-period.ts` and the `minutes_worked` generated column in
   `supabase/migrations/0001_initial_schema.sql` implement the same rule. Change
   them together; `scripts/test-db.sh` and the unit tests both check it.
@@ -76,7 +90,7 @@ npm run build        # production build
 npm run lint         # eslint
 npx tsc --noEmit     # typecheck
 npm test             # vitest unit tests
-./scripts/test-db.sh # applies the schema to a scratch DB and tests RLS
+./scripts/test-db.sh # applies every migration to a scratch DB and tests RLS
 ```
 
 `scripts/test-db.sh` needs a local Postgres and drops/recreates its target

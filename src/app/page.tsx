@@ -2,7 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/auth/actions";
-import { payPeriodLabel } from "@/lib/workplace";
+import { ShiftLogger, type LoggerWorkplace } from "@/app/shifts/shift-logger";
+import { payPeriodLabel, type OptionalFieldKey } from "@/lib/workplace";
 import type { PayPeriodType } from "@/lib/pay-period";
 
 export const dynamic = "force-dynamic";
@@ -19,10 +20,16 @@ export default async function HomePage() {
 
   const { data: workplaces, error } = await supabase
     .from("workplaces")
-    .select("id, name, hourly_wage, pay_period_type, overtime_enabled")
+    .select("id, name, hourly_wage, pay_period_type, overtime_enabled, optional_fields")
     .order("created_at", { ascending: true });
 
   const hasWorkplaces = !!workplaces && workplaces.length > 0;
+
+  const forLogger: LoggerWorkplace[] = (workplaces ?? []).map((w) => ({
+    id: w.id,
+    name: w.name,
+    optional_fields: (w.optional_fields ?? []) as OptionalFieldKey[],
+  }));
 
   return (
     <main className="flex-1 px-6 py-10 max-w-sm w-full mx-auto">
@@ -35,6 +42,13 @@ export default async function HomePage() {
         </form>
       </header>
       <p className="mt-1 text-sm opacity-70">{user.email}</p>
+
+      {/* Logging a shift is the product, so it leads. */}
+      {hasWorkplaces ? (
+        <section className="mt-8">
+          <ShiftLogger workplaces={forLogger} />
+        </section>
+      ) : null}
 
       <section className="mt-10">
         <h2 className="text-sm font-medium uppercase tracking-wide opacity-60">
@@ -90,17 +104,6 @@ export default async function HomePage() {
           </div>
         )}
       </section>
-
-      {hasWorkplaces ? (
-        <section className="mt-10">
-          <h2 className="text-sm font-medium uppercase tracking-wide opacity-60">
-            Shifts
-          </h2>
-          <p className="mt-3 text-sm opacity-70">
-            Logging a shift is the next thing to build.
-          </p>
-        </section>
-      ) : null}
     </main>
   );
 }

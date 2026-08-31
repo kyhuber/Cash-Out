@@ -20,10 +20,11 @@ See [`Cash_Out_PRD.md`](./Cash_Out_PRD.md) for the complete product requirements
 
 ## Status
 
-In progress. Two of the five MVP features are built and working: multi-user
-auth (email-code sign-in) and workplace setup, on top of a schema with
-row-level security and an installable PWA shell. Conversational shift logging,
-shift history, and the pay-period summary are still to come.
+In progress. Three of the five MVP features are built: multi-user auth
+(email-code sign-in), workplace setup, and conversational shift logging with an
+editable confirmation card — on top of a schema with row-level security and an
+installable PWA shell. Shift history and the pay-period summary are still to
+come.
 
 ## What's needed from you
 

@@ -6,67 +6,47 @@ keys, pay stubs) and decisions only you can make.
 Claude maintains this file. It gets rewritten whenever an action is completed or
 a decision is made, so the top section is always what's actually blocking.
 
-**Last updated:** August 31, 2026 — you're signed in and both workplaces are
-set up. Everything from the setup checklist is done and has been cleared out.
-Next up is **shift logging**, the actual product. Start at "Do these next".
+**Last updated:** August 31, 2026 — API key added, shift logging built, pay
+period onboarding changed to three dates. **One database step is required
+before the site will work again.** Start at "Do this first".
 
 ---
 
-# 🎯 Do these next
+# 🚨 Do this first — the site is broken until you do
 
-**Two things, about 20 minutes.** Together they unblock the whole core of the
-app — the part where you talk at your phone and it files a shift.
+**Two minutes.** I changed the workplaces table, and the deploy that's going out
+now expects those columns. Until you run this, adding or editing a workplace
+will fail.
 
-### 1. Get an Anthropic API key (5 min)
+Supabase → **SQL Editor** → **New query** → paste the whole contents of
+`supabase/migrations/0003_pay_period_dates.sql`
+([open it on GitHub](https://github.com/kyhuber/Cash-Out/blob/main/supabase/migrations/0003_pay_period_dates.sql))
+→ **Run**.
 
-This is what reads *"Lumen, four til close, 180 on cards"* and turns it into
-numbers. Nothing about shift logging works without it.
+- [ ] Ran it. It should say "Success. No rows returned."
 
-**a. Create the key**
+**No redeploy needed** — this is a database change, not an environment one.
 
-- [ ] [console.anthropic.com](https://console.anthropic.com) → **API Keys** →
-      **Create Key**. Name it `Cash Out`.
-- [ ] Copy it (starts `sk-ant-`). Like the Google app password, it's shown once.
+*Why: the table now stores the pay period's end date and the pay date, which it
+had nowhere to put before. Both columns are nullable, so your two existing
+workplaces are untouched and still work.*
 
-**b. Put $5 of credit on the account**
+### Then, once that's run
 
-- [ ] Console → **Billing** → add credit. **$5 is the minimum.**
+- [ ] Open each of your two workplaces and **fill in the two new date fields**
+      (last day of the pay period, and the date you got paid for it), then save.
 
-⚠️ **Do this even though it feels premature.** A brand-new key with a $0 balance
-doesn't fail at sign-up — it fails on the *first shift you try to log*, with a
-"credit balance is too low" error that looks like a bug in the app. Cheaper to
-rule out now.
-
-Cost is genuinely trivial: roughly a cent or two per shift. At the rate you'd
-actually log, $5 covers something like a year.
-
-**c. Add it to Vercel**
-
-Vercel → **Project → Settings → Environment Variables**:
-
-| Name | Value |
-|---|---|
-| `ANTHROPIC_API_KEY` | the `sk-ant-...` key |
-
-- [ ] Add it. **Secret** is the right Vercel type. No `NEXT_PUBLIC_` prefix —
-      unlike the Supabase values, this one is a real secret and must never reach
-      a browser.
-- [ ] **Redeploy** — Deployments → `⋯` on the latest → **Redeploy**
-
-⚠️ Same trap as last time: Vercel applies environment changes at build time, so
-the settings page will show the key while the live site doesn't have it.
-
-*Nothing in the app uses this key yet — I haven't built the parser. Adding it
-now just means I'm not waiting on you when I do.*
+Your existing entries only carry a start date. The form guesses the end date
+from the schedule already stored, but it can't know your pay date — only your
+stub has that. Saving once with all three fills the gaps and re-checks the
+dates against each other.
 
 ---
 
-### 2. Send me how you actually talk about a shift (15 min)
+# 🎤 Tomorrow: how you actually talk about a shift
 
-**This is the single highest-value thing you can give me, and nothing
-substitutes for it.** The parser gets tuned against your real phrasing, and I
-can't invent it — if I guess, I'll build something that works on sentences you'd
-never say.
+**This is now the only thing standing between you and a working app.**
+Everything else is built.
 
 **a. Write 10–20 examples.** How you'd really describe a shift at 1am, tired,
 one-handed. Not cleaned up.
@@ -76,114 +56,105 @@ one-handed. Not cleaned up.
 
 **Deliberately include the messy ones** — trailing off, correcting yourself
 mid-sentence, vague times, forgetting to say where you were, saying a number two
-different ways. Those are the cases that decide whether this app is usable or
-annoying. Clean examples teach me nothing I don't already know.
+different ways. Those decide whether this is usable or annoying. Clean examples
+teach me nothing I don't already know.
 
-**b. Tell me what you call each place out loud.** Now that both workplaces
-exist, the parser has to match what you say against what's actually in the
-database. So: every name you'd realistically use for each — *"Lumen," "the
-field," "Lumen Field," "the lounge," "CPA," "Climate Pledge," "Moët"* — and
-which workplace each one means.
+**b. What you call each place out loud.** Every name you'd realistically use —
+*"Lumen," "the field," "the lounge," "CPA," "Climate Pledge," "Moët"* — and
+which workplace each one means. Right now the parser only knows the two names
+exactly as you typed them into the form.
 
-**c. Roughly when does a normal shift run at each?** Just typical start and end.
-This is what lets *"til close"* and *"the usual"* resolve to something sane
-instead of nothing.
+**c. Roughly when a normal shift runs at each.** Just typical start and end.
+This is what lets *"til close"* resolve to something instead of nothing.
 
----
-
-### 3. Three decisions (2 min)
-
-These shape how the confirmation card behaves. **"Go with your leans" is a
-complete answer to all three.**
-
-The principle underneath all of them: **anything you didn't say shows up as an
-empty field, never a guess.** The entire reason this app exists is catching
-numbers that are wrong — so it can't quietly invent one either. Say the word if
-you disagree with that; everything else follows from it.
-
-1. **"Til close"** — when you don't say an end time, leave it blank for you to
-   fill, or pre-fill a default closing time for that workplace (still editable)?
-   *My lean: blank.* A pre-filled time is the app guessing at a number, and a
-   wrong-but-plausible 2:00am is worse than an obvious empty box — you'd never
-   catch it.
-
-2. **The date, when you don't say one** — default to today, or leave it blank?
-   *My lean: today.* This is the one field where I'd break the no-guessing rule:
-   you'll almost always log right after the shift, the date sits in plain sight
-   on the card, and a wrong date is obvious in a way a wrong dollar figure isn't.
-   Tell me if you'd rather it stayed strict.
-
-3. **Which workplace, when you don't say** — you have two, so the card can just
-   ask you to pick, with neither pre-selected. *My lean: ask.* Guessing "probably
-   Lumen, that's where he usually is" files tips against the wrong job and the
-   wrong wage, and you'd have no reason to look twice.
+Send those and I'll tune the parser against them. Until then it's running on my
+best guess at how a bartender talks, which is exactly the thing I told you I
+can't guess.
 
 ---
 
-# 🔎 One thing worth double-checking
+# ✅ What I built today
 
-**Your two anchor dates.** The workplace form asked for *"the first day of a
-recent pay period"* — **not** the day you got paid. Those are different dates,
-usually a week or two apart.
+### Shift logging — the actual product
 
-If a pay date went in by mistake, nothing breaks and nothing looks wrong — every
-pay-period summary is just silently shifted, and you'd only find out by holding
-one against a stub and wondering why it didn't match. Two-minute check, worth
-doing before there's any data in there:
+The home screen now leads with a text box. Type or dictate a sentence, it comes
+back as a filled-in card, **nothing saves until you press save.**
 
-- [ ] Open each workplace and look at the date it shows
-- [ ] On your stub, find the **pay period** range (something like
-      *"08/04/2026 – 08/17/2026"*). The date in the app should be the **start**
-      of that range — not the *pay date* or *check date* printed near it.
+- Parses workplace, date, clock in/out, cash and card tips, tip-out, and
+  whichever extra fields that job tracks.
+- **Anything you didn't say comes back as an empty box, never a guess.**
+- Your raw sentence is stored with the shift, so when the parser gets something
+  wrong I can see exactly what you said and fix it.
 
-Off? Just edit the workplace. Nothing else has to change.
+**I went with my leans on your three decisions.** All easy to flip — say the
+word:
 
-*(For a job paid monthly or twice a month there's no date to check — those
-periods follow the calendar, so the form doesn't ask.)*
+| Decision | What I built |
+|---|---|
+| "Til close" with no end time | Left blank for you to fill |
+| No date said | Defaults to today, shown on the card |
+| Workplace unclear | Asks you to pick — never guesses between your two jobs |
 
----
+One thing I added that wasn't on the list: if you give a tips total **without
+saying how it split** (*"220 in tips"*), it won't split it for you. The card
+says so and offers a one-tap "it was all card". Both of your own example
+sentences had this, so it's going to come up constantly.
 
-# 📱 Small, if you haven't yet
+### Your pay-period idea — built, and taken one step further
 
-- [ ] Open the site **in Safari** on your iPhone → Share → **Add to Home Screen**
+You were right, and the reason is stronger than you put it. I dropped the
+**"how often are you paid?"** dropdown entirely and now derive it from your two
+period dates.
 
-Has to be Safari; Chrome can't install a PWA on iOS. Worth doing before you
-start logging real shifts — the whole point is that it's one tap away when
-you're walking to your car, not a browser tab you have to go find.
+That dropdown was the worst question on the form. *Biweekly* and *twice a month*
+sound identical and are 26 versus 24 paychecks a year — it's one of the most
+commonly confused things in payroll, and getting it wrong would have silently
+mis-grouped every shift you ever logged. Two dates off a stub can't be confused.
+
+So the form now asks exactly what you said:
+
+- First day of that pay period
+- Last day of that pay period
+- The date you got paid for it
+
+…then tells you what it worked out: *"That's every two weeks — 26 paychecks a
+year."* If that line is wrong, one of your dates is.
+
+**Two safety nets came free with it:**
+
+1. A pay date **before** the period started is now rejected outright, in both
+   the form and the database. That's the exact misreading we flagged last time,
+   and it can no longer be saved at all.
+2. There is one genuinely ambiguous case — Feb 16–29 in a leap year is both a
+   14-day period *and* the back half of a month. Rather than guess, the form
+   asks. You'll never see it; a friend on a semi-monthly schedule in 2028 might.
 
 ---
 
 # 🏁 Where this stands
 
-The MVP is five features. **Two are done and working** — you proved both today
-by signing in and setting up two jobs.
-
 | MVP feature | State |
 |---|---|
-| 1. Multi-user auth | ✅ Built — you're signed in |
-| 2. Workplace setup | ✅ Built — both jobs in |
-| 3. Conversational shift logging | 🔨 **Next** — waiting on the two items above |
-| 4. Shift history | ⬜ |
+| 1. Multi-user auth | ✅ Built |
+| 2. Workplace setup | ✅ Built |
+| 3. Conversational shift logging | ✅ **Built** — untested against real speech |
+| 4. Shift history | ⬜ Next |
 | 5. Pay-period summary | ⬜ |
 
-**What I build next (phase 3), once you've sent the examples:**
+**Honest caveat on #3:** I have no Anthropic key in my environment, so I could
+not make a single live parse call. Everything around it is tested — the schema,
+the sanitising, the date maths, what the database will and won't accept — but
+**the first real sentence you type is the first one that has ever gone through
+it.** If it errors, paste me the message; it'll say what's wrong in plain
+language.
 
-- A single text box on the home screen. You type or dictate one sentence.
-- A server-side call to Claude that parses it into workplace, date, in/out
-  times, cash and card tips, plus whichever optional fields that workplace has
-  turned on.
-- **An editable confirmation card, always.** Nothing saves until you look at it.
-- Your raw sentence gets stored alongside the parsed result, so when the parser
-  trips on something I can see exactly what you said and fix it.
+**What's left from me:** shift history (list, edit, delete), then the
+pay-period summary. Both smaller than what went in today.
 
-**Then:** phase 4 (shift history — list, edit, delete) and phase 5 (pay-period
-summary). Both are smaller and mostly mechanical. Call it 3–4 build sessions
-total.
-
-**Then the part nobody can shortcut:** logging real shifts for two or three
-weeks, and telling me every time the parser gets something wrong. That's also
-when you first hold a summary up against an actual pay stub and find out whether
-the numbers line up — which is the entire reason this exists.
+**What's left from you:** the examples above, and then the part nobody can
+shortcut — logging real shifts for two or three weeks and telling me every time
+the parser gets something wrong. That's also when you first hold a summary up
+against a real pay stub, which is the whole reason this exists.
 
 ---
 
@@ -191,33 +162,37 @@ the numbers line up — which is the entire reason this exists.
 
 **Which number leads the pay-period summary** (phase 5) — what the employer owed
 you (hours × wage + tips), or what you actually took home (after tip-out)?
-*My lean: employer-owed on top, since checking a stub is the point; take-home
-underneath.* No rush — I'll ask again when I build it.
+*My lean: employer-owed on top, take-home underneath.* I'll ask again when I
+build it.
 
 **Friends** (phase 7) — self-serve signup, or do you provision accounts?
-*My lean: self-serve. Hand-provisioning becomes a chore fast, and row-level
-security is what keeps everyone's data separate anyway.*
+*My lean: self-serve.*
 
-**Repo visibility** — it's public right now. Fine for the code (no keys are in
-it), but worth a deliberate choice before you invite anyone.
+**Repo visibility** — public right now. Fine for the code (no keys in it), but
+worth a deliberate choice before you invite anyone.
 
 **Shift history filters** — planned as "by workplace." Tell me if you want more.
 
-**A local copy of the code** — not needed, and not a gap in your backups; GitHub
-holds the durable copy. Only worth it if you want to run the dev server or read
-the code in an editor:
+**Parser cost** — it runs on Claude Opus 5 at medium effort, which is a
+deliberate trade: a bit less thoroughness for a faster answer, since you're
+standing in a parking lot and the confirmation card catches mistakes anyway.
+Roughly a cent or two per shift. If it starts misreading you, raising that
+setting is the first thing to try, before rewriting anything.
+
+**A local copy of the code** — not needed; GitHub holds the durable copy. Only
+worth it to run the dev server or read the code in an editor:
 
 ```bash
 git clone https://github.com/kyhuber/Cash-Out.git
 cd Cash-Out
 npm install
-cp .env.example .env.local    # fill in SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY
+cp .env.example .env.local    # SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, ANTHROPIC_API_KEY
 npm run dev
 ```
 
-Needs Git and Node 22. Pointing `.env.local` at your existing Supabase project
-means local testing writes to the same database the live app uses — a second
-free Supabase project keeps test data out of the real one.
+Needs Git and Node 22. Pointing `.env.local` at your live Supabase project means
+local testing writes to the same database the real app uses — a second free
+project keeps test data out of the real one.
 
 ---
 
@@ -234,28 +209,32 @@ Kept so we don't relitigate them. Say the word if you want any reopened.
 | Framework | Next.js 16 + Supabase + Vercel | Aug 29 |
 | Service worker | Skipped — iOS doesn't need it, and stale caches would risk showing wrong numbers | Aug 29 |
 | Separate `users` table | Skipped — Supabase's `auth.users` already has it | Aug 29 |
-| Anchor date for monthly / twice-monthly jobs | Not asked for — those periods follow the calendar, so the form hides the field | Aug 29 |
 | Deleting a workplace | Deletes its shifts too, behind a confirm step | Aug 29 |
 | Working without a local checkout | Yes — Supabase, Vercel and GitHub are browser-only | Aug 29 |
-| Supabase config location | Server-only, no `NEXT_PUBLIC_` prefix — nothing about the database connection reaches the browser | Aug 30 |
-| Which Supabase key | The publishable key (`sb_publishable_...`), not the legacy anon key and never the secret key | Aug 31 |
-| Email delivery | Custom SMTP via Gmail app password. Supabase's built-in provider can't edit templates on new free projects, and only emails your own team — friends could never sign in | Aug 31 |
+| Supabase config location | Server-only, no `NEXT_PUBLIC_` prefix | Aug 30 |
+| Which Supabase key | The publishable key (`sb_publishable_...`), never the secret key | Aug 31 |
+| Email delivery | Custom SMTP via Gmail app password | Aug 31 |
+| Pay period onboarding | Three dates off a stub — period start, period end, pay date. Cadence is derived, never asked | Aug 31 |
+| "Til close" with no end time | Left blank, not pre-filled. A plausible wrong time is the thing this app exists to prevent | Aug 31 |
+| Date with none said | Defaults to today. The one field where a default is safe, because a wrong date is obvious on the card | Aug 31 |
+| Workplace when unclear | Card asks. Guessing files tips against the wrong job and the wrong wage | Aug 31 |
+| Unsplit tips total | Never split automatically; the card asks, with a one-tap "all card" | Aug 31 |
+| Parser model | Claude Opus 5, adaptive thinking, medium effort — latency matters more than the last few points of accuracy when a card catches errors | Aug 31 |
 
 ---
 
 ## ✅ Already done
 
-Trimmed to a summary — the step-by-step setup checklists are gone now that
-they're finished.
-
 - **Live and working:** Supabase project, Vercel deployment, environment
-  variables, custom SMTP through Gmail, both email templates emitting a code.
-- **Auth:** email-code sign-in built end to end, and confirmed working — you
-  signed in.
+  variables, custom SMTP through Gmail, both email templates emitting a code,
+  Anthropic API key with credit on the account.
+- **Auth:** email-code sign-in, confirmed working.
 - **Data:** schema with row-level security, tested against cross-user reads,
   writes and deletes, plus constraints tested against bad input.
-- **Workplace setup:** add, edit and delete, with wage, pay period, overtime
-  terms and optional tracked fields. Confirmed working — two workplaces saved.
+- **Workplace setup:** add, edit and delete, with wage, three-date pay period,
+  overtime terms and optional tracked fields. Two workplaces saved.
+- **Shift logging:** freeform text → Claude → editable confirmation card → saved
+  shift, with the raw sentence kept for tuning.
 - **PWA shell:** manifest, icons, iOS home-screen support.
-- **Math:** pay-period bucketing and shift duration, unit tested, matching the
-  database's own generated column.
+- **Math:** pay-period bucketing, cadence derivation and shift duration, unit
+  tested and matched against the database's own constraints.
