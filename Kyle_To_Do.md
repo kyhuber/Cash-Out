@@ -156,6 +156,22 @@ wait.
 **Phase 4 (shift history):** no decisions expected. Tell me if you want filters
 beyond "by workplace."
 
+**A local copy of the code:** not needed, and not a gap in your backups —
+GitHub holds the durable copy. Worth doing only if you want to run the dev
+server, use Claude Code on your own machine, or read the code in an editor:
+
+```bash
+git clone https://github.com/kyhuber/Cash-Out.git
+cd Cash-Out
+npm install
+cp .env.example .env.local    # fill in SUPABASE_URL and SUPABASE_ANON_KEY
+npm run dev
+```
+
+Needs Git and Node 22. Note that pointing `.env.local` at your existing
+Supabase project means local testing writes to the same database the live app
+uses — a second free Supabase project keeps test data out of the real one.
+
 **Phase 7 (friends):** covered by decision 5 above. Worth revisiting whether the
 repo should go private before you invite anyone — it's public right now, which
 is fine for the code but worth a deliberate choice.
