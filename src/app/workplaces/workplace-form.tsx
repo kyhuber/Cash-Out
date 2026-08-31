@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import {
   OPTIONAL_FIELDS,
-  PAY_PERIOD_TYPES,
-  needsAnchorDate,
+  payPeriodDescription,
+  periodPrefill,
   type Workplace,
 } from "@/lib/workplace";
-import type { PayPeriodType } from "@/lib/pay-period";
+import { payPeriodTypesMatching, type PayPeriodType } from "@/lib/pay-period";
 import { deleteWorkplace, type WorkplaceFormState } from "./actions";
 
 const label = "block text-sm font-medium mb-1.5";
@@ -19,6 +19,16 @@ const field =
 const primary =
   "w-full rounded-xl bg-foreground text-background px-4 py-3.5 text-base " +
   "font-medium disabled:opacity-50";
+
+/** Never throws: a half-typed date must not take the whole form down. */
+function safeMatches(start: string, end: string): PayPeriodType[] {
+  if (!start || !end) return [];
+  try {
+    return payPeriodTypesMatching(start, end);
+  } catch {
+    return [];
+  }
+}
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
@@ -42,12 +52,24 @@ export function WorkplaceForm({
   const [state, formAction, pending] = useActionState(action, {});
   const errors = state.errors ?? {};
 
-  // Controlled because they drive which fields are shown.
-  const [periodType, setPeriodType] = useState<PayPeriodType>(
-    workplace?.pay_period_type ?? "biweekly",
-  );
+  // UTC, not the local date, and deliberately so: this renders on the server
+  // and hydrates in the browser, and a local date would differ between the two
+  // for anyone outside UTC. It is only ever a fallback for a workplace saved
+  // before migration 0003, and the user confirms it on screen either way.
+  const prefill = workplace
+    ? periodPrefill(workplace, new Date().toISOString().slice(0, 10))
+    : null;
+
+  // Controlled because the cadence is derived from them as you type.
+  const [periodStart, setPeriodStart] = useState(prefill?.period_start ?? "");
+  const [periodEnd, setPeriodEnd] = useState(prefill?.period_end ?? "");
+  const [tiebreak, setTiebreak] = useState<PayPeriodType | "">("");
   const [overtime, setOvertime] = useState(workplace?.overtime_enabled ?? false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  // [] means the dates fit no known cadence, one is the normal case, and two
+  // means genuinely ambiguous — only Feb 16-29 in a leap year does that.
+  const matches = safeMatches(periodStart, periodEnd);
 
   const enabledFields = new Set(workplace?.optional_fields ?? []);
 
@@ -100,46 +122,109 @@ export function WorkplaceForm({
           <FieldError message={errors.hourly_wage} />
         </div>
 
-        <div>
-          <label className={label} htmlFor="pay_period_type">
-            How often are you paid?
-          </label>
-          <select
-            id="pay_period_type"
-            name="pay_period_type"
-            value={periodType}
-            onChange={(e) => setPeriodType(e.target.value as PayPeriodType)}
-            className={field}
-          >
-            {PAY_PERIOD_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
-          </select>
-          <FieldError message={errors.pay_period_type} />
-        </div>
+        <fieldset className="rounded-xl border border-black/10 dark:border-white/15 p-4">
+          <legend className={`${label} px-1 mb-0`}>
+            One pay period from a stub
+          </legend>
+          <p className={`${hint} mt-0 mb-4`}>
+            Find any recent pay stub and copy three dates off it. That&apos;s
+            enough to work out your whole pay schedule — you don&apos;t have to
+            know what it&apos;s called.
+          </p>
 
-        {/* Only weekly and biweekly periods are measured from an anchor. */}
-        {needsAnchorDate(periodType) ? (
-          <div>
-            <label className={label} htmlFor="pay_period_anchor_date">
-              First day of a recent pay period
-            </label>
-            <input
-              id="pay_period_anchor_date"
-              name="pay_period_anchor_date"
-              type="date"
-              defaultValue={workplace?.pay_period_anchor_date ?? undefined}
-              className={field}
-            />
-            <p className={hint}>
-              Not the day you got paid — the first day of the stretch of work
-              that paycheck covered. It&apos;s how shifts get grouped.
-            </p>
-            <FieldError message={errors.pay_period_anchor_date} />
+          <div className="flex flex-col gap-4">
+            <div>
+              <label className={label} htmlFor="period_start">
+                First day of that pay period
+              </label>
+              <input
+                id="period_start"
+                name="period_start"
+                type="date"
+                required
+                value={periodStart}
+                onChange={(e) => setPeriodStart(e.target.value)}
+                className={field}
+              />
+              <FieldError message={errors.period_start} />
+            </div>
+
+            <div>
+              <label className={label} htmlFor="period_end">
+                Last day of that pay period
+              </label>
+              <input
+                id="period_end"
+                name="period_end"
+                type="date"
+                required
+                value={periodEnd}
+                onChange={(e) => setPeriodEnd(e.target.value)}
+                className={field}
+              />
+              <p className={hint}>
+                On the stub these are usually printed together, like
+                &ldquo;08/04/2026 – 08/17/2026&rdquo;.
+              </p>
+              <FieldError message={errors.period_end} />
+            </div>
+
+            <div>
+              <label className={label} htmlFor="pay_date">
+                The date you got paid for it
+              </label>
+              <input
+                id="pay_date"
+                name="pay_date"
+                type="date"
+                required
+                defaultValue={prefill?.pay_date || undefined}
+                className={field}
+              />
+              <p className={hint}>
+                The pay or check date — after the period ends, not inside it.
+              </p>
+              <FieldError message={errors.pay_date} />
+            </div>
+
+            {/* Two dates fitting two cadences only happens for Feb 16-29 in a
+                leap year. Guessing would mis-bucket every future shift. */}
+            {matches.length > 1 ? (
+              <div>
+                <label className={label} htmlFor="pay_period_type">
+                  Those dates fit two schedules — which is it?
+                </label>
+                <select
+                  id="pay_period_type"
+                  name="pay_period_type"
+                  value={tiebreak}
+                  onChange={(e) =>
+                    setTiebreak(e.target.value as PayPeriodType | "")
+                  }
+                  className={field}
+                >
+                  <option value="">Pick one…</option>
+                  {matches.map((m) => (
+                    <option key={m} value={m}>
+                      {payPeriodDescription(m)}
+                    </option>
+                  ))}
+                </select>
+                <FieldError message={errors.pay_period_type} />
+              </div>
+            ) : null}
+
+            {matches.length === 1 ? (
+              <p className="text-sm rounded-lg bg-black/5 dark:bg-white/10 px-3 py-2.5">
+                That&apos;s <strong>{payPeriodDescription(matches[0])}</strong>.
+                <span className="block text-xs opacity-60 mt-0.5">
+                  Worked out from your dates. If that&apos;s not right, one of
+                  them is off.
+                </span>
+              </p>
+            ) : null}
           </div>
-        ) : null}
+        </fieldset>
 
         <div className="rounded-xl border border-black/10 dark:border-white/15 p-4">
           <label className="flex items-center gap-3 cursor-pointer">

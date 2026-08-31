@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  isDateOnly,
   minutesToHours,
+  payPeriodEndFor,
   payPeriodFor,
+  payPeriodTypesMatching,
   shiftMinutes,
   type PayPeriodType,
 } from "./pay-period";
@@ -165,5 +168,106 @@ describe("payPeriodFor", () => {
     expect(() => payPeriodFor("08/29/2026", "weekly", "2026-08-17")).toThrow();
     expect(() => payPeriodFor("2026-02-30", "weekly", "2026-08-17")).toThrow();
     expect(() => payPeriodFor("2026-08-29", "weekly", "not-a-date")).toThrow();
+  });
+});
+
+describe("payPeriodTypesMatching", () => {
+  it("reads a cadence off a period's shape", () => {
+    expect(payPeriodTypesMatching("2026-08-03", "2026-08-09")).toEqual([
+      "weekly",
+    ]);
+    expect(payPeriodTypesMatching("2026-08-03", "2026-08-16")).toEqual([
+      "biweekly",
+    ]);
+    expect(payPeriodTypesMatching("2026-08-01", "2026-08-15")).toEqual([
+      "semi_monthly",
+    ]);
+    expect(payPeriodTypesMatching("2026-08-16", "2026-08-31")).toEqual([
+      "semi_monthly",
+    ]);
+    expect(payPeriodTypesMatching("2026-08-01", "2026-08-31")).toEqual([
+      "monthly",
+    ]);
+  });
+
+  it("handles short months", () => {
+    // 30-day month, and February in both a common and a leap year.
+    expect(payPeriodTypesMatching("2026-09-16", "2026-09-30")).toEqual([
+      "semi_monthly",
+    ]);
+    expect(payPeriodTypesMatching("2026-02-16", "2026-02-28")).toEqual([
+      "semi_monthly",
+    ]);
+    expect(payPeriodTypesMatching("2026-02-01", "2026-02-28")).toEqual([
+      "monthly",
+    ]);
+    expect(payPeriodTypesMatching("2028-02-01", "2028-02-29")).toEqual([
+      "monthly",
+    ]);
+  });
+
+  /**
+   * The one genuinely ambiguous shape. Feb 16-29 in a leap year is exactly 14
+   * days AND the back half of the month. Resolving it either way would silently
+   * mis-bucket every future shift, so both come back and the form asks.
+   */
+  it("reports the leap-February ambiguity instead of picking", () => {
+    expect(payPeriodTypesMatching("2028-02-16", "2028-02-29")).toEqual([
+      "biweekly",
+      "semi_monthly",
+    ]);
+  });
+
+  it("finds nothing for a shape no cadence has", () => {
+    expect(payPeriodTypesMatching("2026-08-03", "2026-08-12")).toEqual([]);
+    expect(payPeriodTypesMatching("2026-08-02", "2026-08-16")).toEqual([]);
+    // A month-length span that doesn't align to the calendar month.
+    expect(payPeriodTypesMatching("2026-08-05", "2026-09-04")).toEqual([]);
+  });
+
+  it("finds nothing when the dates are backwards", () => {
+    expect(payPeriodTypesMatching("2026-08-16", "2026-08-03")).toEqual([]);
+  });
+
+  it("never returns a cadence whose own math disagrees", () => {
+    const cases = [
+      ["2026-08-03", "2026-08-09"],
+      ["2026-08-03", "2026-08-16"],
+      ["2026-08-01", "2026-08-15"],
+      ["2026-08-16", "2026-08-31"],
+      ["2026-02-16", "2026-02-28"],
+      ["2026-08-01", "2026-08-31"],
+    ] as const;
+
+    for (const [start, end] of cases) {
+      for (const type of payPeriodTypesMatching(start, end)) {
+        // The period the app would bucket into must be the one entered.
+        expect(payPeriodFor(start, type, start), `${start}..${end}`).toEqual({
+          start,
+          end,
+        });
+      }
+    }
+  });
+});
+
+describe("payPeriodEndFor", () => {
+  it("closes the period that starts on a date", () => {
+    expect(payPeriodEndFor("2026-08-03", "weekly")).toBe("2026-08-09");
+    expect(payPeriodEndFor("2026-08-03", "biweekly")).toBe("2026-08-16");
+    expect(payPeriodEndFor("2026-08-01", "semi_monthly")).toBe("2026-08-15");
+    expect(payPeriodEndFor("2026-08-16", "semi_monthly")).toBe("2026-08-31");
+    expect(payPeriodEndFor("2026-08-01", "monthly")).toBe("2026-08-31");
+  });
+});
+
+describe("isDateOnly", () => {
+  it("accepts real dates and rejects everything else", () => {
+    expect(isDateOnly("2026-08-31")).toBe(true);
+    expect(isDateOnly("2028-02-29")).toBe(true);
+    expect(isDateOnly("2026-02-30")).toBe(false);
+    expect(isDateOnly("2026-13-01")).toBe(false);
+    expect(isDateOnly("08/31/2026")).toBe(false);
+    expect(isDateOnly("")).toBe(false);
   });
 });

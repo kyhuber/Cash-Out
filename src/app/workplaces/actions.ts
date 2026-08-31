@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import {
-  needsAnchorDate,
   optionalNumber,
+  toWorkplaceRow,
   workplaceSchema,
   OPTIONAL_FIELD_KEYS,
   type OptionalFieldKey,
@@ -17,34 +17,41 @@ export type WorkplaceFormState = {
   formError?: string;
 };
 
+const PERIOD_TYPES: readonly string[] = [
+  "weekly",
+  "biweekly",
+  "semi_monthly",
+  "monthly",
+];
+
 /**
- * Builds the row from form input.
+ * Builds the input from form data.
  *
- * Two normalisations happen here rather than in the browser, because the client
- * can send anything: a hidden anchor field is forced to null for calendar-based
- * pay periods, and the overtime multiplier is dropped when overtime is off.
- * Both mirror constraints the database enforces anyway.
+ * The pay cadence is NOT read from the form in the normal case — it's derived
+ * from the period's start and end dates, because "every two weeks" and "twice a
+ * month" are 26 and 24 paychecks a year and get confused constantly. The
+ * pay_period_type field is only sent when two dates genuinely fit both, which
+ * happens for Feb 16-29 in a leap year and nowhere else.
  */
 function readForm(formData: FormData) {
-  const payPeriodType = String(
-    formData.get("pay_period_type") ?? "",
-  ) as PayPeriodType;
-
   const overtimeEnabled = formData.get("overtime_enabled") === "on";
-
-  const anchorRaw = String(formData.get("pay_period_anchor_date") ?? "").trim();
 
   const submitted = formData.getAll("optional_fields").map(String);
   const optionalFields = submitted.filter((f): f is OptionalFieldKey =>
     (OPTIONAL_FIELD_KEYS as readonly string[]).includes(f),
   );
 
+  const tiebreak = String(formData.get("pay_period_type") ?? "");
+
   return {
     name: String(formData.get("name") ?? ""),
     hourly_wage: optionalNumber(formData.get("hourly_wage")) ?? Number.NaN,
-    pay_period_type: payPeriodType,
-    pay_period_anchor_date:
-      needsAnchorDate(payPeriodType) && anchorRaw !== "" ? anchorRaw : null,
+    period_start: String(formData.get("period_start") ?? "").trim(),
+    period_end: String(formData.get("period_end") ?? "").trim(),
+    pay_date: String(formData.get("pay_date") ?? "").trim(),
+    pay_period_type: PERIOD_TYPES.includes(tiebreak)
+      ? (tiebreak as PayPeriodType)
+      : null,
     overtime_enabled: overtimeEnabled,
     overtime_multiplier: overtimeEnabled
       ? optionalNumber(formData.get("overtime_multiplier"))
@@ -79,7 +86,7 @@ export async function createWorkplace(
   // mismatch anyway, but the app should not be sending one in the first place.
   const { error } = await supabase
     .from("workplaces")
-    .insert({ ...parsed.data, user_id: user.id });
+    .insert({ ...toWorkplaceRow(parsed.data), user_id: user.id });
 
   if (error) return { formError: error.message };
 
@@ -107,7 +114,7 @@ export async function updateWorkplace(
   // means a mismatched id updates nothing instead of erroring obscurely.
   const { error } = await supabase
     .from("workplaces")
-    .update(parsed.data)
+    .update(toWorkplaceRow(parsed.data))
     .eq("id", id)
     .eq("user_id", user.id);
 

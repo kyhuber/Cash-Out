@@ -75,4 +75,44 @@ begin
   end;
   if not rejected then raise exception 'FAIL: negative tips accepted'; end if;
   raise notice 'PASS negative tips rejected';
+
+  -- --- a pay period has to end after it starts (migration 0003) ---
+  rejected := false;
+  begin
+    insert into workplaces (user_id, name, hourly_wage, pay_period_type,
+                            pay_period_anchor_date, pay_period_end_date)
+    values ('33333333-3333-3333-3333-333333333333', 'Backwards period', 20,
+            'biweekly', '2026-08-16', '2026-08-03');
+  exception when check_violation then rejected := true;
+  end;
+  if not rejected then raise exception 'FAIL: period ending before it starts accepted'; end if;
+  raise notice 'PASS pay period must end after it starts';
+
+  -- --- a pay date cannot fall before the period it pays for (migration 0003) ---
+  -- This is the misreading the three-date onboarding form exists to catch:
+  -- typing the pay date where a period date belongs.
+  rejected := false;
+  begin
+    insert into workplaces (user_id, name, hourly_wage, pay_period_type,
+                            pay_period_anchor_date, pay_period_end_date, pay_date)
+    values ('33333333-3333-3333-3333-333333333333', 'Paid before it began', 20,
+            'biweekly', '2026-08-03', '2026-08-16', '2026-07-30');
+  exception when check_violation then rejected := true;
+  end;
+  if not rejected then raise exception 'FAIL: pay date before the period start accepted'; end if;
+  raise notice 'PASS pay date cannot precede the pay period';
+
+  -- --- the ordinary case still stores ---
+  insert into workplaces (user_id, name, hourly_wage, pay_period_type,
+                          pay_period_anchor_date, pay_period_end_date, pay_date)
+  values ('33333333-3333-3333-3333-333333333333', 'Three dates off a stub', 20,
+          'biweekly', '2026-08-03', '2026-08-16', '2026-08-21');
+  raise notice 'PASS a period with all three dates is accepted';
+
+  -- --- and rows predating 0003 still store, since both columns are nullable ---
+  insert into workplaces (user_id, name, hourly_wage, pay_period_type,
+                          pay_period_anchor_date)
+  values ('33333333-3333-3333-3333-333333333333', 'Pre-0003 row', 20,
+          'biweekly', '2026-08-03');
+  raise notice 'PASS a workplace with no end or pay date is still accepted';
 end $$;

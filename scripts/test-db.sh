@@ -18,12 +18,17 @@ TEST_URL="$(printf '%s' "$ADMIN_URL" | sed -E "s#(://[^/]*)/[^?]*#\1/${TEST_DB}#
 echo "==> recreating ${TEST_DB}"
 psql "$ADMIN_URL" -qc "drop database if exists ${TEST_DB};" -c "create database ${TEST_DB};" >/dev/null
 
-for f in \
-  "$ROOT/supabase/tests/00_local_harness.sql" \
-  "$ROOT/supabase/migrations/0001_initial_schema.sql" \
-  "$ROOT/supabase/migrations/0002_conditional_anchor_date.sql" \
-  "$ROOT/supabase/tests/01_rls_test.sql" \
+# Migrations are globbed rather than listed, so a new one is exercised here the
+# moment it is added — a hardcoded list silently stops testing the newest file.
+shopt -s nullglob
+FILES=(
+  "$ROOT/supabase/tests/00_local_harness.sql"
+  "$ROOT"/supabase/migrations/*.sql
+  "$ROOT/supabase/tests/01_rls_test.sql"
   "$ROOT/supabase/tests/02_constraint_test.sql"
+)
+
+for f in "${FILES[@]}"
 do
   echo "==> $(basename "$f")"
   psql "$TEST_URL" -v ON_ERROR_STOP=1 -q -f "$f"

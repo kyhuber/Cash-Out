@@ -15,6 +15,16 @@ export type DateOnly = string;
 export type PayPeriod = { start: DateOnly; end: DateOnly };
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** True if `value` is a real calendar date formatted `YYYY-MM-DD`. */
+export function isDateOnly(value: string): boolean {
+  try {
+    parse(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
 const MS_PER_DAY = 86_400_000;
 
 function parse(date: DateOnly): Date {
@@ -117,4 +127,60 @@ export function shiftMinutes(clockIn: string, clockOut: string): number {
 /** Minutes as decimal hours, rounded to 2dp for display and pay math. */
 export function minutesToHours(minutes: number): number {
   return Math.round((minutes / 60) * 100) / 100;
+}
+
+/**
+ * Every pay cadence whose period shape matches a start and end date read off a
+ * pay stub.
+ *
+ * Onboarding asks for two dates rather than asking the user to name their
+ * cadence, because "every two weeks" and "twice a month" are 26 and 24
+ * paychecks a year and are constantly confused — but the dates on a stub can't
+ * be. The cadence is derived from the shape of the period instead.
+ *
+ * Returns:
+ *   []        — no cadence has this shape; the dates are probably misread
+ *   [one]     — unambiguous, the normal case
+ *   [a, b]    — genuinely ambiguous, so the caller must ask rather than guess
+ *
+ * The only ambiguous shape is the second half of a leap-year February:
+ * Feb 16-29 is both a 14-day biweekly period and a twice-monthly one. Picking
+ * either silently mis-buckets every future shift, so it is surfaced, not
+ * resolved here.
+ */
+export function payPeriodTypesMatching(
+  start: DateOnly,
+  end: DateOnly,
+): PayPeriodType[] {
+  const s = parse(start);
+  const e = parse(end);
+  if (e.getTime() < s.getTime()) return [];
+
+  const days = (e.getTime() - s.getTime()) / MS_PER_DAY + 1;
+  const matches: PayPeriodType[] = [];
+
+  if (days === 7) matches.push("weekly");
+  if (days === 14) matches.push("biweekly");
+
+  // Calendar-based periods never span a month boundary.
+  if (
+    s.getUTCFullYear() === e.getUTCFullYear() &&
+    s.getUTCMonth() === e.getUTCMonth()
+  ) {
+    const last = lastDayOfMonth(s.getUTCFullYear(), s.getUTCMonth());
+    const from = s.getUTCDate();
+    const to = e.getUTCDate();
+
+    if ((from === 1 && to === 15) || (from === 16 && to === last)) {
+      matches.push("semi_monthly");
+    }
+    if (from === 1 && to === last) matches.push("monthly");
+  }
+
+  return matches;
+}
+
+/** The last day of the pay period that starts on `start`. */
+export function payPeriodEndFor(start: DateOnly, type: PayPeriodType): DateOnly {
+  return payPeriodFor(start, type, start).end;
 }
