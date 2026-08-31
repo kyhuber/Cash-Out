@@ -19,7 +19,10 @@ Read `Cash_Out_PRD.md` first — it's the full spec. This file is for the invari
   so the session lands outside the installed PWA's storage container. This needs
   BOTH the "Confirm signup" template (a user's first sign-in, which creates the
   account) and the "Magic Link" template (every one after) to emit
-  `{{ .Token }}` — editing only the latter leaves first sign-in broken.
+  `{{ .Token }}` — editing only the latter leaves first sign-in broken. Editing
+  templates at all requires custom SMTP on a new free-tier project, and the
+  built-in provider only delivers to project team members, so custom SMTP is
+  required before anyone but the owner can sign in.
 - A shift stores the wage it was worked at (`hourly_wage_at_time`). A later
   raise must never retroactively change what a past shift was worth.
 - A shift belongs to the date it STARTED. Overnight shifts (20:00 -> 02:00) are

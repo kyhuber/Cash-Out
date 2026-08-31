@@ -6,14 +6,14 @@ keys, pay stubs) and decisions only you can make.
 Claude maintains this file. It gets rewritten whenever an action is completed or
 a decision is made, so the top section is always what's actually blocking.
 
-**Last updated:** August 31, 2026 — two email templates need editing, not one.
-Start at "Tomorrow morning".
+**Last updated:** August 31, 2026 — custom SMTP is required before the email
+templates can be edited. Start at "Tomorrow morning".
 
 ---
 
 # ☀️ Tomorrow morning — start here
 
-**About 15 minutes of clicking, then one message back to me.** Do them in order;
+**About 25 minutes of clicking, then one message back to me.** Do them in order;
 each one confirms the previous worked.
 
 ### Step 1 — Fix the two Vercel variables (5 min)
@@ -45,33 +45,86 @@ rather than quietly leaking data.
 time, so the settings page will show your new values while the live site keeps
 serving the old ones.
 
-### Step 2 — Sign in (2 min)
+### Step 2 — Turn on custom SMTP (10 min)
 
-- [ ] Open the site, enter your email, tap **Email me a code**
+Supabase's built-in email provider won't work for this project, for two
+reasons — the second is the one that matters:
 
-**What should happen:** an email with a **6-digit code**. Type it in, you're in.
+1. Since **June 3, 2026**, new free-tier projects on it **can't edit email
+   templates**. That's the wall you hit.
+2. It sends **2 emails per hour, project-wide, and only to addresses on your
+   project's team.** Your friends could never receive a sign-in code from it.
 
-**If a link arrives instead**, you need to edit **two** templates, not one.
-Supabase → **Authentication → Emails**:
+So this isn't a workaround for the template lock — it's a step this project
+needed anyway. Custom SMTP is free on every Supabase plan, and **no code
+changes are needed**.
+
+**Use Gmail.** You already have the account, and unlike most providers it needs
+no domain and no DNS records.
+
+**a. Create a Google app password**
+
+- [ ] Google Account → **Security** → **2-Step Verification** must be on
+      (required before app passwords are available)
+- [ ] Google Account → **Security** → **App passwords**
+- [ ] App: **Mail**. Device: **Other** → name it `Supabase`
+- [ ] Copy the 16-character password it shows. It's shown once.
+      This is *not* your Gmail password.
+
+**b. Enter it in Supabase**
+
+Supabase → **Authentication → Emails → SMTP Settings** → *Enable Custom SMTP*:
+
+| Field | Value |
+|---|---|
+| Host | `smtp.gmail.com` |
+| Port | `587` |
+| Username | `kyhuber@gmail.com` |
+| Password | the 16-character app password |
+| Sender email | `kyhuber@gmail.com` |
+| Sender name | `Cash Out` |
+
+- [ ] Save
+
+⚠️ Sender email must match the username. Gmail won't send as an address you
+don't own.
+
+Sign-in emails will arrive from your personal Gmail. Fine for you and a few
+friends. If you ever want them from a branded address, that's the point to move
+to a provider like Resend and verify a domain — not now.
+
+### Step 3 — Edit both email templates (3 min)
+
+With custom SMTP on, the Templates tab unlocks.
+
+Supabase → **Authentication → Emails → Templates**. Two of them:
 
 | Template | When it's sent |
 |---|---|
 | **Confirm signup** | Your **first ever** sign-in, when the account is created |
 | **Magic Link** | Every sign-in after that |
 
-A first sign-in creates your account, so Supabase uses *Confirm signup* — which
-is why editing only Magic Link still produced a link. In **both**, replace the
-`{{ .ConfirmationURL }}` link with:
+In **both**, replace the `{{ .ConfirmationURL }}` link with:
 
       Your Cash Out sign-in code is: <strong>{{ .Token }}</strong>
 
-`{{ .Token }}` is the part that matters. Save both, then try again — no
-redeploy needed, these are Supabase settings, not Vercel ones.
+- [ ] Confirm signup edited
+- [ ] Magic Link edited
 
-**If you see a red error under the form**, paste it to me. It'll say what's
-wrong in plain language now.
+`{{ .Token }}` is the part that matters. Editing only Magic Link leaves your
+first sign-in broken, because creating the account uses the other template.
 
-### Step 3 — Add your two workplaces (5 min)
+### Step 4 — Sign in (2 min)
+
+- [ ] Open the site, enter your email, tap **Email me a code**
+- [ ] A **6-digit code** should arrive. Type it in.
+
+No redeploy needed for any of steps 2–4 — these are all Supabase settings.
+
+**If you see a red error under the form**, paste it to me; it'll say what's
+wrong in plain language.
+
+### Step 5 — Add your two workplaces (5 min)
 
 Have a recent pay stub from each job open. For **each** you'll enter:
 
@@ -89,7 +142,7 @@ Have a recent pay stub from each job open. For **each** you'll enter:
 **SQL Editor** → run `supabase/migrations/0001_initial_schema.sql`, then
 `supabase/migrations/0002_conditional_anchor_date.sql`, in that order.
 
-### Step 4 — Put it on your phone (1 min)
+### Step 6 — Put it on your phone (1 min)
 
 - [ ] Open the site **in Safari** on your iPhone → Share → **Add to Home Screen**
 
@@ -217,6 +270,7 @@ Kept here so we don't relitigate them. Say the word if you want any reopened.
 | Working without a local checkout | Yes — Supabase, Vercel and GitHub are browser-only | Aug 29 |
 | Supabase config location | Server-only, no `NEXT_PUBLIC_` prefix — nothing about the database connection reaches the browser | Aug 30 |
 | Which Supabase key | The publishable key (`sb_publishable_...`), not the legacy anon key and never the secret key | Aug 31 |
+| Email delivery | Custom SMTP via Gmail app password. Supabase's built-in provider can't edit templates on new free projects, and only emails your own team — friends could never sign in | Aug 31 |
 
 ---
 
