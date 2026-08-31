@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  assertNotAPrivilegedKey,
   normalizeSupabaseUrl,
   optionalSupabaseConfig,
   supabaseConfig,
@@ -56,6 +57,7 @@ describe("config resolution", () => {
   function clear() {
     for (const k of [
       "SUPABASE_URL",
+      "SUPABASE_PUBLISHABLE_KEY",
       "SUPABASE_ANON_KEY",
       "NEXT_PUBLIC_SUPABASE_URL",
       "NEXT_PUBLIC_SUPABASE_ANON_KEY",
@@ -105,6 +107,79 @@ describe("config resolution", () => {
 
     vi.stubEnv("SUPABASE_URL", "https://supabase.com/dashboard/project/x");
     vi.stubEnv("SUPABASE_ANON_KEY", "k");
+    expect(optionalSupabaseConfig()).toBeNull();
+  });
+});
+
+function jwtWithRole(role: string) {
+  const b64 = (o: unknown) =>
+    Buffer.from(JSON.stringify(o)).toString("base64url");
+  return `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ role })}.sig`;
+}
+
+describe("assertNotAPrivilegedKey", () => {
+  it("accepts a publishable key", () => {
+    expect(() =>
+      assertNotAPrivilegedKey("sb_publishable_AbCdEf123456_XyZ"),
+    ).not.toThrow();
+  });
+
+  it("accepts a legacy anon JWT", () => {
+    expect(() => assertNotAPrivilegedKey(jwtWithRole("anon"))).not.toThrow();
+  });
+
+  it("rejects a secret key", () => {
+    expect(() => assertNotAPrivilegedKey("sb_secret_DangerDanger")).toThrow(
+      /SECRET key/,
+    );
+  });
+
+  it("rejects a legacy service_role JWT", () => {
+    expect(() => assertNotAPrivilegedKey(jwtWithRole("service_role"))).toThrow(
+      /service_role/,
+    );
+  });
+
+  it("does not choke on a key that merely contains dots", () => {
+    expect(() => assertNotAPrivilegedKey("not.a.jwt")).not.toThrow();
+  });
+});
+
+describe("publishable key naming", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  function clear() {
+    for (const k of [
+      "SUPABASE_URL",
+      "SUPABASE_PUBLISHABLE_KEY",
+      "SUPABASE_ANON_KEY",
+      "NEXT_PUBLIC_SUPABASE_URL",
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    ]) {
+      vi.stubEnv(k, "");
+    }
+  }
+
+  it("reads SUPABASE_PUBLISHABLE_KEY", () => {
+    clear();
+    vi.stubEnv("SUPABASE_URL", "https://abcdefgh.supabase.co");
+    vi.stubEnv("SUPABASE_PUBLISHABLE_KEY", "sb_publishable_abc123");
+    expect(supabaseConfig().anonKey).toBe("sb_publishable_abc123");
+  });
+
+  it("prefers the publishable name over the legacy anon name", () => {
+    clear();
+    vi.stubEnv("SUPABASE_URL", "https://abcdefgh.supabase.co");
+    vi.stubEnv("SUPABASE_PUBLISHABLE_KEY", "sb_publishable_new");
+    vi.stubEnv("SUPABASE_ANON_KEY", "legacy-anon");
+    expect(supabaseConfig().anonKey).toBe("sb_publishable_new");
+  });
+
+  it("refuses to start with a secret key in the publishable slot", () => {
+    clear();
+    vi.stubEnv("SUPABASE_URL", "https://abcdefgh.supabase.co");
+    vi.stubEnv("SUPABASE_PUBLISHABLE_KEY", "sb_secret_oops");
+    expect(() => supabaseConfig()).toThrow(/SECRET key/);
     expect(optionalSupabaseConfig()).toBeNull();
   });
 });

@@ -10,6 +10,11 @@ Read `Cash_Out_PRD.md` first — it's the full spec. This file is for the invari
 - Voice/text input goes through native OS keyboard dictation, not the in-browser Web Speech API (unreliable on iOS Safari).
 - Each user's data is private (row-level isolation via Supabase). No cross-user data access in v1.
 - Keep the Anthropic API key server-side only — never expose it to the browser.
+- The app authenticates to Supabase with the PUBLISHABLE key
+  (`sb_publishable_...`, formerly the anon key). Never the SECRET key
+  (`sb_secret_...`, formerly `service_role`) — it bypasses row-level security,
+  which would show every user everyone else's shifts. `src/lib/env.ts` refuses
+  to start with one; keep that check.
 - Sign-in is a 6-digit email code, never a magic link. A link opens in Safari,
   so the session lands outside the installed PWA's storage container.
 - A shift stores the wage it was worked at (`hourly_wage_at_time`). A later

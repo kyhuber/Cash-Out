@@ -6,7 +6,8 @@ keys, pay stubs) and decisions only you can make.
 Claude maintains this file. It gets rewritten whenever an action is completed or
 a decision is made, so the top section is always what's actually blocking.
 
-**Last updated:** August 30, 2026 — end of day. Start at "Tomorrow morning".
+**Last updated:** August 31, 2026 — switched to Supabase's publishable key.
+Start at "Tomorrow morning".
 
 ---
 
@@ -22,9 +23,20 @@ The names changed today. Vercel → **Project → Settings → Environment Varia
 | Add this | Value |
 |---|---|
 | `SUPABASE_URL` | `https://orgezkldagwaifmnnbse.supabase.co` |
-| `SUPABASE_ANON_KEY` | Supabase → Project Settings → **API Keys** → anon / publishable |
+| `SUPABASE_PUBLISHABLE_KEY` | Supabase → Project Settings → **API Keys** → the **publishable** key (starts `sb_publishable_`) |
 
-- [ ] Add both. **Secret is the right type now** — the browser-exposure prompt
+**On the two keys you're seeing:** Supabase replaced the old anon key with the
+**publishable** key — same low privileges, same row-level security behaviour,
+just a new format. The anon key under *Legacy keys* still works, but it's being
+retired, so use the publishable one. I verified the app handles it identically.
+
+⚠️ **Do not use the secret key** (`sb_secret_...`, the one right next to it). It
+bypasses row-level security, which would show every user everyone else's shifts.
+The app now refuses to start if it finds one there, so a slip fails loudly
+rather than quietly leaking data.
+
+- [ ] Add both. **Secret is the right *Vercel type*** — that's Vercel's storage
+      setting, unrelated to Supabase's secret key. The browser-exposure prompt
       won't appear, because these no longer go to the browser at all.
 - [ ] Delete the old `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - [ ] **Redeploy** — Deployments → `⋯` on the latest → **Redeploy**
@@ -195,6 +207,7 @@ Kept here so we don't relitigate them. Say the word if you want any reopened.
 | Deleting a workplace | Deletes its shifts too, behind a confirm step | Aug 29 |
 | Working without a local checkout | Yes — Supabase, Vercel and GitHub are browser-only | Aug 29 |
 | Supabase config location | Server-only, no `NEXT_PUBLIC_` prefix — nothing about the database connection reaches the browser | Aug 30 |
+| Which Supabase key | The publishable key (`sb_publishable_...`), not the legacy anon key and never the secret key | Aug 31 |
 
 ---
 

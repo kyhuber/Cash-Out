@@ -5,9 +5,10 @@
  * server actions — so these are deliberately NOT `NEXT_PUBLIC_`. Nothing about
  * the connection reaches the browser bundle.
  *
- * The `NEXT_PUBLIC_` names are still accepted as a fallback so an existing
- * deployment keeps working. If browser-side Supabase is ever needed (realtime,
- * say), the prefixed names become required again for that code path.
+ * Several names are accepted so an existing deployment keeps working while
+ * Supabase migrates from the legacy `anon` key to the publishable key. They are
+ * interchangeable: the publishable key carries the same low privileges, and the
+ * client sends it in exactly the same headers.
  */
 function readEnv() {
   // An empty or whitespace-only variable counts as unset, so a blank
@@ -18,10 +19,50 @@ function readEnv() {
   return {
     url: first(process.env.SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_URL),
     anonKey: first(
+      process.env.SUPABASE_PUBLISHABLE_KEY,
       process.env.SUPABASE_ANON_KEY,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     ),
   };
+}
+
+/**
+ * Refuses a key that can bypass row-level security.
+ *
+ * In the current Supabase dashboard the secret key sits directly beside the
+ * publishable one, and pasting the wrong one here would not fail loudly — it
+ * would work, while silently disabling every RLS policy, so any signed-in user
+ * would see everyone's shifts. That is the one guarantee this app cannot lose.
+ */
+export function assertNotAPrivilegedKey(key: string): void {
+  if (key.startsWith("sb_secret_")) {
+    throw new Error(
+      "That looks like a Supabase SECRET key (sb_secret_...). It bypasses " +
+        "row-level security, which would expose every user's shifts to every " +
+        "other user. Use the PUBLISHABLE key (sb_publishable_...) from " +
+        "Project Settings → API Keys instead.",
+    );
+  }
+
+  // Legacy service_role keys are JWTs carrying the role in their payload.
+  const parts = key.split(".");
+  if (parts.length === 3) {
+    try {
+      const payload = JSON.parse(
+        Buffer.from(parts[1], "base64url").toString("utf8"),
+      );
+      if (payload?.role === "service_role") {
+        throw new Error(
+          "That is the legacy service_role key. It bypasses row-level " +
+            "security, which would expose every user's shifts to every other " +
+            "user. Use the publishable key (or the legacy anon key) instead.",
+        );
+      }
+    } catch (e) {
+      // Only re-throw our own error; a key that simply isn't a JWT is fine.
+      if (e instanceof Error && e.message.includes("service_role")) throw e;
+    }
+  }
 }
 
 /** Throws a message worth reading if the config is missing or malformed. */
@@ -30,10 +71,12 @@ export function supabaseConfig() {
 
   if (!url || !anonKey) {
     throw new Error(
-      "Missing SUPABASE_URL or SUPABASE_ANON_KEY. " +
+      "Missing SUPABASE_URL or SUPABASE_PUBLISHABLE_KEY. " +
         "Copy .env.example to .env.local and fill in your Supabase project values.",
     );
   }
+
+  assertNotAPrivilegedKey(anonKey);
 
   return { url: normalizeSupabaseUrl(url), anonKey };
 }
@@ -44,6 +87,7 @@ export function optionalSupabaseConfig() {
   if (!url || !anonKey) return null;
 
   try {
+    assertNotAPrivilegedKey(anonKey);
     return { url: normalizeSupabaseUrl(url), anonKey };
   } catch {
     return null;
