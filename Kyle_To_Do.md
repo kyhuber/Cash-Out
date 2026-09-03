@@ -18,23 +18,29 @@ before the site will work again.** Start at "Do this first".
 now expects those columns. Until you run this, adding or editing a workplace
 will fail.
 
-Supabase → **SQL Editor** → **New query** → paste the whole contents of
-`supabase/migrations/0003_pay_period_dates.sql`
-([open it on GitHub](https://github.com/kyhuber/Cash-Out/blob/main/supabase/migrations/0003_pay_period_dates.sql))
-→ **Run**.
+Supabase → **SQL Editor** → **New query** → paste each file's contents and
+**Run**, in this order:
 
-- [ ] Ran it. It should say "Success. No rows returned."
+- [ ] [`0003_pay_period_dates.sql`](https://github.com/kyhuber/Cash-Out/blob/main/supabase/migrations/0003_pay_period_dates.sql)
+- [ ] [`0004_shift_station.sql`](https://github.com/kyhuber/Cash-Out/blob/main/supabase/migrations/0004_shift_station.sql)
+
+Each should say "Success. No rows returned."
 
 **No redeploy needed** — this is a database change, not an environment one.
 
-*Why: the table now stores the pay period's end date and the pay date, which it
-had nowhere to put before. Both columns are nullable, so your two existing
-workplaces are untouched and still work.*
+*Why 0003: the table now stores the pay period's end date and the pay date,
+which it had nowhere to put before. Both columns are nullable, so your two
+existing workplaces are untouched.*
 
-### Then, once that's run
+*Why 0004: shifts can now record which bar or lounge inside the venue you
+worked — see below.*
+
+### Then, once those have run
 
 - [ ] Open each of your two workplaces and **fill in the two new date fields**
-      (last day of the pay period, and the date you got paid for it), then save.
+      (last day of the pay period, and the date you got paid for it).
+- [ ] While you're in there, tick **"Bar or lounge"** under *What does this job
+      report?* for both venues, then save.
 
 Your existing entries only carry a start date. The form guesses the end date
 from the schedule already stored, but it can't know your pay date — only your
@@ -43,33 +49,36 @@ dates against each other.
 
 ---
 
-# 🎤 Tomorrow: how you actually talk about a shift
+# 🎤 Still owed: more examples
 
-**This is now the only thing standing between you and a working app.**
-Everything else is built.
+**This is the only thing standing between you and a working app.** Everything
+else is built.
 
-**a. Write 10–20 examples.** How you'd really describe a shift at 1am, tired,
-one-handed. Not cleaned up.
+You've sent two, and they were useful — they're what turned up the "Limen
+Field" misspelling case and the bar/lounge question. **Keep them coming in
+exactly the voice you used**, full sentences, the way you'd talk to someone
+taking the details down. I've tuned the parser for that register rather than
+the terse one I'd assumed.
 
-> *"Lumen, four til close, 180 on cards and like 40 cash"*
-> *"did the lounge last night, 6 to 1, 220 in tips, tipped out 35"*
+Worth covering across the batch:
 
-**Deliberately include the messy ones** — trailing off, correcting yourself
-mid-sentence, vague times, forgetting to say where you were, saying a number two
-different ways. Those decide whether this is usable or annoying. Clean examples
-teach me nothing I don't already know.
+- A shift where you **don't know your tips yet** (card tips reported later).
+- One where you **correct yourself** mid-sentence.
+- One where you **don't say which venue**, to see it ask rather than guess.
+- One at each **bar or lounge** you actually work.
+- Anything you'd say **that isn't a shift at all**, so I can see it decline
+  gracefully instead of inventing numbers.
 
-**b. What you call each place out loud.** Every name you'd realistically use —
-*"Lumen," "the field," "the lounge," "CPA," "Climate Pledge," "Moët"* — and
-which workplace each one means. Right now the parser only knows the two names
-exactly as you typed them into the form.
+Where the right answer isn't obvious from the sentence alone, add a line saying
+what it should have been. Most won't need it.
 
-**c. Roughly when a normal shift runs at each.** Just typical start and end.
-This is what lets *"til close"* resolve to something instead of nothing.
+### One question still open
 
-Send those and I'll tune the parser against them. Until then it's running on my
-best guess at how a bartender talks, which is exactly the thing I told you I
-can't guess.
+**Do you ever work a morning shift?** Your examples give bare times — "4:40",
+"9:20" — with no AM/PM, and the parser currently assumes evening, which is
+right for arena work. If you ever work 8am–4pm, that assumption turns a morning
+shift into an evening one, and the times on the card would look plausible
+enough that you'd click straight past them.
 
 ---
 
@@ -99,6 +108,25 @@ One thing I added that wasn't on the list: if you give a tips total **without
 saying how it split** (*"220 in tips"*), it won't split it for you. The card
 says so and offers a one-tap "it was all card". Both of your own example
 sentences had this, so it's going to come up constantly.
+
+### Venue and bar are now separate
+
+You were right that these are different things. A workplace is what carries a
+**wage and a pay period**; since the rate is the same at every bar in a venue,
+the bar isn't a second workplace — it's a property of the shift. So it's now a
+field on the shift, and one you can group by later.
+
+- Climate Pledge Arena → Verizon Lounge, Moët Lounge
+- Lumen Field → Bar 309, and whatever else you work
+
+**The thing that would have quietly ruined this:** free text through a parser
+produces "bar 309", "Bar 309", and "309" for one bar, and your comparison turns
+into noise. So the app feeds both the parser and the card the bars it has
+already seen at that venue, and snaps new entries onto an existing spelling.
+The card also offers them as a dropdown. You never manage a list — it builds
+itself from what you log.
+
+Tick "Bar or lounge" on both workplaces (above) to switch it on.
 
 ### Your pay-period idea — built, and taken one step further
 
@@ -219,6 +247,8 @@ Kept so we don't relitigate them. Say the word if you want any reopened.
 | Date with none said | Defaults to today. The one field where a default is safe, because a wrong date is obvious on the card | Aug 31 |
 | Workplace when unclear | Card asks. Guessing files tips against the wrong job and the wrong wage | Aug 31 |
 | Unsplit tips total | Never split automatically; the card asks, with a one-tap "all card" | Aug 31 |
+| Bar / lounge inside a venue | A field on the shift, not a second workplace — the wage is the same, only tips differ. Spelling is snapped to bars already recorded so totals can't split | Aug 31 |
+| How you'll phrase things | Full sentences, as if talking to someone taking the details down. Parser handles both that and clipped fragments | Aug 31 |
 | Parser model | Claude Opus 5, adaptive thinking, medium effort — latency matters more than the last few points of accuracy when a card catches errors | Aug 31 |
 
 ---

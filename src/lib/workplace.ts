@@ -11,12 +11,17 @@ import {
 /**
  * The optional per-workplace tracked fields from PRD section 6.2.
  *
- * These keys MUST match the `optional_fields_known` check constraint in
- * supabase/migrations/0001_initial_schema.sql — workplace.test.ts asserts it.
- * Growing the list means a migration, which is deliberate: a fixed short list
- * beats a custom field-builder for v1.
+ * These keys MUST match the `optional_fields_known` check constraint, as last
+ * defined across supabase/migrations — workplace.test.ts asserts it. Growing
+ * the list means a migration, which is deliberate: a fixed short list beats a
+ * custom field-builder for v1.
  */
 export const OPTIONAL_FIELDS = [
+  {
+    key: "station",
+    label: "Bar or lounge",
+    hint: "Which bar inside the venue — same wage, different tips",
+  },
   { key: "total_sales", label: "Total sales", hint: "Not every job reports this" },
   { key: "tip_out", label: "Tip-out paid", hint: "What you paid out to support staff" },
   { key: "shift_type", label: "Event type", hint: "Concert, game, private event" },

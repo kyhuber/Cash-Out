@@ -115,4 +115,37 @@ begin
   values ('33333333-3333-3333-3333-333333333333', 'Pre-0003 row', 20,
           'biweekly', '2026-08-03');
   raise notice 'PASS a workplace with no end or pay date is still accepted';
+
+  -- --- station is optional, but never blank (migration 0004) ---
+  -- A blank string would become its own "station" and split one bar's tips.
+  rejected := false;
+  begin
+    insert into shifts (user_id, workplace_id, shift_date, clock_in, clock_out,
+                        hourly_wage_at_time, station)
+    select '33333333-3333-3333-3333-333333333333', id, '2026-08-24', '16:00', '22:00', 20, '   '
+    from workplaces where name = 'Monthly job';
+  exception when check_violation then rejected := true;
+  end;
+  if not rejected then raise exception 'FAIL: blank station accepted'; end if;
+  raise notice 'PASS blank station rejected';
+
+  insert into shifts (user_id, workplace_id, shift_date, clock_in, clock_out,
+                      hourly_wage_at_time, station)
+  select '33333333-3333-3333-3333-333333333333', id, '2026-08-25', '16:00', '22:00', 20, 'Bar 309'
+  from workplaces where name = 'Monthly job';
+  raise notice 'PASS a shift records which bar it was worked at';
+
+  -- --- and station stays optional for a venue that has no bars ---
+  insert into shifts (user_id, workplace_id, shift_date, clock_in, clock_out,
+                      hourly_wage_at_time)
+  select '33333333-3333-3333-3333-333333333333', id, '2026-08-26', '16:00', '22:00', 20
+  from workplaces where name = 'Monthly job';
+  raise notice 'PASS a shift with no station is still accepted';
+
+  -- --- 'station' is now a known optional field key (migration 0004) ---
+  insert into workplaces (user_id, name, hourly_wage, pay_period_type,
+                          pay_period_anchor_date, optional_fields)
+  values ('33333333-3333-3333-3333-333333333333', 'Tracks its bars', 20,
+          'biweekly', '2026-08-03', array['station']);
+  raise notice 'PASS station accepted as a tracked optional field';
 end $$;

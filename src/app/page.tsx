@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/auth/actions";
 import { ShiftLogger, type LoggerWorkplace } from "@/app/shifts/shift-logger";
+import { knownStations } from "@/app/shifts/actions";
 import { payPeriodLabel, type OptionalFieldKey } from "@/lib/workplace";
 import type { PayPeriodType } from "@/lib/pay-period";
 
@@ -25,10 +26,15 @@ export default async function HomePage() {
 
   const hasWorkplaces = !!workplaces && workplaces.length > 0;
 
+  // Bars already recorded, so the card can suggest them rather than let a
+  // second spelling of the same bar split its tips in two.
+  const stations = hasWorkplaces ? await knownStations(supabase) : {};
+
   const forLogger: LoggerWorkplace[] = (workplaces ?? []).map((w) => ({
     id: w.id,
     name: w.name,
     optional_fields: (w.optional_fields ?? []) as OptionalFieldKey[],
+    stations: stations[w.id] ?? [],
   }));
 
   return (

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   OPTIONAL_FIELD_KEYS,
@@ -10,23 +10,38 @@ import {
   type Workplace,
 } from "./workplace";
 
-const migration = readFileSync(
-  "supabase/migrations/0001_initial_schema.sql",
-  "utf8",
-);
+/**
+ * Every migration, in order, concatenated.
+ *
+ * Matching against the whole run rather than 0001 alone is what keeps these
+ * tests honest: a constraint dropped and redefined by a later migration would
+ * otherwise still be checked in its original form, and the assertion would
+ * quietly be testing history instead of the live schema.
+ */
+const migrations = readdirSync("supabase/migrations")
+  .filter((f) => f.endsWith(".sql"))
+  .sort()
+  .map((f) => readFileSync(`supabase/migrations/${f}`, "utf8"));
+
+/** The LAST definition of a constraint wins, as it does in the database. */
+function effectiveConstraint(pattern: RegExp): string {
+  let found: string | null = null;
+  for (const sql of migrations) {
+    for (const m of sql.matchAll(pattern)) found = m[1];
+  }
+  expect(found, `no migration defines ${pattern}`).toBeTruthy();
+  return found!;
+}
 
 /**
- * These two tests are the reason the TypeScript lists and the SQL schema can't
+ * These tests are the reason the TypeScript lists and the SQL schema can't
  * silently drift apart. Adding a field in one place without the other fails here.
  */
 describe("schema agreement with the database", () => {
   it("optional field keys match the optional_fields_known constraint", () => {
-    const match = migration.match(
-      /constraint optional_fields_known\s+check \(optional_fields <@ array\[([^\]]+)\]/,
-    );
-    expect(match, "could not find the constraint in the migration").toBeTruthy();
-
-    const sqlKeys = match![1]
+    const sqlKeys = effectiveConstraint(
+      /constraint optional_fields_known\s+check \(optional_fields <@ array\[([^\]]+)\]/g,
+    )
       .split(",")
       .map((s) => s.trim().replace(/^'|'$/g, ""))
       .sort();
@@ -35,12 +50,9 @@ describe("schema agreement with the database", () => {
   });
 
   it("pay period types match the pay_period_type enum", () => {
-    const match = migration.match(
-      /create type pay_period_type as enum \(([^)]+)\)/,
-    );
-    expect(match, "could not find the enum in the migration").toBeTruthy();
-
-    const sqlValues = match![1]
+    const sqlValues = effectiveConstraint(
+      /create type pay_period_type as enum \(([^)]+)\)/g,
+    )
       .split(",")
       .map((s) => s.trim().replace(/^'|'$/g, ""))
       .sort();

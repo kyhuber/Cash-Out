@@ -17,6 +17,13 @@ export type ParserWorkplace = {
   id: string;
   name: string;
   optional_fields: OptionalFieldKey[];
+  /**
+   * Bars or lounges already recorded at this workplace. Fed to the model so a
+   * station it has seen before comes back spelled the same way — "bar 309" and
+   * "Bar 309" would otherwise split one bar's tips across two names, which
+   * defeats the only reason the field exists.
+   */
+  stations?: string[];
 };
 
 const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -57,11 +64,17 @@ export function buildParsePrompt(
         tracked.length > 0
           ? ` — also tracks: ${tracked.join(", ")}`
           : " — tracks no extra fields";
-      return `- id "${w.id}": ${w.name}${also}`;
+      const seen =
+        w.optional_fields.includes("station") && (w.stations?.length ?? 0) > 0
+          ? `\n  bars/lounges recorded here so far: ${w.stations!.join(", ")}`
+          : "";
+      return `- id "${w.id}": ${w.name}${also}${seen}`;
     })
     .join("\n");
 
-  return `You extract shift details from how a service worker describes a shift they just worked. They are tired, typing or dictating one-handed, and they will not be precise. Your output is shown to them on an editable card before anything is saved.
+  return `You extract shift details from how a service worker describes a shift they just worked. Your output is shown to them on an editable card before anything is saved.
+
+They may write in full sentences, the way someone would talk to a person taking the details down ("Tonight I worked at Climate Pledge Arena. I clocked in at 4:40."), or in clipped fragments ("lumen 4 til close, 180 cards"). Handle both equally well; neither register means anything about how reliable the content is.
 
 Today is ${today} (${weekdayOf(today)}).
 
@@ -71,9 +84,16 @@ ${jobs}
 Return null for anything they did not actually say. This is the most important rule. A wrong number that looks plausible is worse than an empty box, because they will not catch it — the whole reason this app exists is to catch numbers that are wrong. Never fill a field to be helpful.
 
 WORKPLACE
-- Match against the names above, including partial and casual references ("Lumen" for "Lumen Field", "the lounge" for a lounge, "CPA" for "Climate Pledge Arena").
+- Match against the names above, including partial and casual references ("Lumen" for "Lumen Field", "CPA" for "Climate Pledge Arena").
+- Expect misspellings and mis-dictations of the venue name. "Limen Field", "Lumin", "Climate Pledge Arena" heard as "Climate Bridge" — match these to the intended workplace. A name that is one or two characters off, or that sounds alike when spoken, is the same place.
 - Return the id string exactly as written above.
 - If they did not indicate a workplace, or you cannot tell which one they mean, return null. Do not pick the more likely one.
+
+STATION (the bar or lounge inside the venue)
+- Only for a workplace that tracks it. Otherwise null.
+- This is a place WITHIN the venue: "bar 309", "the Verizon Lounge", "Moët lounge", "the north bar". The venue itself is never the station.
+- If it matches one already recorded at that workplace, return it spelled EXACTLY as listed above, whatever spelling or capitalisation they used. "bar 309", "309", and "Bar 309" are all the recorded "Bar 309". Getting this wrong splits one bar's tips across two names and makes comparing them useless.
+- If it is one you have not seen there before, return what they said, tidied to how it would be written on a sign.
 
 DATE
 - Resolve relative references against today's date: "last night" and "yesterday" are the day before today, "tonight" and "today" are today, a bare weekday name is the most recent past occurrence of that weekday.
@@ -131,8 +151,20 @@ export function sanitizeParsed(
   const ifTracked = <T>(key: OptionalFieldKey, value: T) =>
     tracked.has(key) ? value : null;
 
+  // Snap a station back onto one already recorded here, so a spelling the model
+  // tidied differently doesn't split one bar's tips across two names.
+  const station = (v: string | null) => {
+    const said = text(v);
+    if (!said) return null;
+    const known = workplaces.find((w) => w.id === workplaceId)?.stations ?? [];
+    return (
+      known.find((k) => k.toLowerCase() === said.toLowerCase()) ?? said
+    );
+  };
+
   return {
     workplace_id: workplaceId,
+    station: ifTracked("station", station(parsed.station)),
     shift_date:
       parsed.shift_date && isDateOnly(parsed.shift_date)
         ? parsed.shift_date

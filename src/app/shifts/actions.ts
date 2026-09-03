@@ -25,6 +25,7 @@ export type SaveState = {
   formError?: string;
   saved?: {
     workplaceName: string;
+    station: string | null;
     shift_date: string;
     clock_in: string;
     clock_out: string;
@@ -70,6 +71,34 @@ async function currentUserWorkplaces() {
 }
 
 /**
+ * Bars and lounges already recorded, grouped by workplace.
+ *
+ * Feeding these back to the parser is what keeps one bar under one name.
+ * Bounded rather than distinct-in-SQL because PostgREST has no DISTINCT and the
+ * row count here is small; the newest shifts are the ones worth matching anyway.
+ */
+export async function knownStations(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<Record<string, string[]>> {
+  const { data } = await supabase
+    .from("shifts")
+    .select("workplace_id, station")
+    .not("station", "is", null)
+    .order("shift_date", { ascending: false })
+    .limit(500);
+
+  const byWorkplace: Record<string, string[]> = {};
+  for (const row of data ?? []) {
+    if (!row.station) continue;
+    const list = (byWorkplace[row.workplace_id] ??= []);
+    if (!list.some((s) => s.toLowerCase() === row.station!.toLowerCase())) {
+      list.push(row.station);
+    }
+  }
+  return byWorkplace;
+}
+
+/**
  * Step one: freeform text in, a draft out. Saves nothing.
  *
  * The confirmation card between this and createShift is non-negotiable — the
@@ -89,7 +118,7 @@ export async function parseShift(
   // wrong pay period.
   const clientToday = String(formData.get("today") ?? "");
 
-  const { workplaces, loadError } = await currentUserWorkplaces();
+  const { supabase, workplaces, loadError } = await currentUserWorkplaces();
   if (loadError) return { error: `Couldn't load your workplaces: ${loadError}` };
   if (workplaces.length === 0) {
     return { error: "Add a workplace first — a shift needs a job to belong to." };
@@ -99,10 +128,13 @@ export async function parseShift(
     ? clientToday
     : new Date().toISOString().slice(0, 10);
 
+  const stations = await knownStations(supabase);
+
   const forParser: ParserWorkplace[] = workplaces.map((w) => ({
     id: w.id,
     name: w.name,
     optional_fields: (w.optional_fields ?? []) as OptionalFieldKey[],
+    stations: stations[w.id] ?? [],
   }));
 
   try {
@@ -148,6 +180,9 @@ export async function createShift(
 
   const parsed = shiftSchema.safeParse({
     workplace_id: workplaceId,
+    station: enabled.includes("station")
+      ? String(formData.get("station") ?? "")
+      : null,
     shift_date: String(formData.get("shift_date") ?? ""),
     clock_in: String(formData.get("clock_in") ?? ""),
     clock_out: String(formData.get("clock_out") ?? ""),
@@ -181,6 +216,7 @@ export async function createShift(
   return {
     saved: {
       workplaceName: workplace.name,
+      station: parsed.data.station,
       shift_date: parsed.data.shift_date,
       clock_in: parsed.data.clock_in,
       clock_out: parsed.data.clock_out,

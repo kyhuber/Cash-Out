@@ -39,6 +39,12 @@ Read `Cash_Out_PRD.md` first — it's the full spec. This file is for the invari
   `medium` effort — a deliberate latency/accuracy trade, since the confirmation
   card is the real backstop. That effort setting is the first knob to turn if
   the parser trips on real phrasing.
+- A workplace is the thing that carries a WAGE and a PAY PERIOD. A bar or
+  lounge inside a venue is not a workplace — the wage is identical across them
+  — it is `shifts.station`, so tips can be compared between them. Stations are
+  free text, but both the parser and the card are fed the ones already recorded
+  at that workplace: two spellings of one bar split its totals and defeat the
+  only reason the field exists.
 - "Today" for a shift comes from the BROWSER, never the server. Vercel runs in
   UTC and an evening shift on the US west coast is already tomorrow there, so a
   server-side date resolves "last night" to the wrong day and can file a shift

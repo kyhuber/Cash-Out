@@ -15,6 +15,8 @@ const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
  */
 export const parsedShiftSchema = z.object({
   workplace_id: z.string().nullable(),
+  /** The bar or lounge inside the venue, when that workplace tracks it. */
+  station: z.string().nullable(),
   shift_date: z.string().nullable(),
   clock_in: z.string().nullable(),
   clock_out: z.string().nullable(),
@@ -36,6 +38,7 @@ export type ParsedShift = z.infer<typeof parsedShiftSchema>;
 
 export const EMPTY_PARSED_SHIFT: ParsedShift = {
   workplace_id: null,
+  station: null,
   shift_date: null,
   clock_in: null,
   clock_out: null,
@@ -72,6 +75,14 @@ const time = (missing: string) =>
 export const shiftSchema = z
   .object({
     workplace_id: z.uuid({ error: "Pick which job this was" }),
+    // Trimmed to null rather than "" so a blank box can't become a distinct
+    // station that splits one bar's totals in two.
+    station: z
+      .string()
+      .trim()
+      .max(100, { error: "That name is too long" })
+      .nullable()
+      .transform((v) => (v ? v : null)),
     shift_date: z
       .string()
       .min(1, { error: "Pick the date" })
@@ -95,10 +106,14 @@ export type ShiftInput = z.infer<typeof shiftSchema>;
 
 /**
  * Optional fields that have their own column on `shifts` rather than living in
- * the optional_field_values JSON. Tip-out is one because the pay-period summary
- * subtracts it to show take-home, so it has to be queryable.
+ * the optional_field_values JSON, because something needs to query or group by
+ * them: the summary subtracts tip-out to show take-home, and station exists
+ * precisely so tips can be compared between bars.
  */
-export const COLUMN_BACKED_FIELDS: readonly OptionalFieldKey[] = ["tip_out"];
+export const COLUMN_BACKED_FIELDS: readonly OptionalFieldKey[] = [
+  "tip_out",
+  "station",
+];
 
 /** Optional fields that do live in optional_field_values. */
 export const JSON_FIELD_KEYS: readonly OptionalFieldKey[] =

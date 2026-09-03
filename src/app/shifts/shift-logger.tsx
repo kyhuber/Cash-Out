@@ -9,6 +9,8 @@ export type LoggerWorkplace = {
   id: string;
   name: string;
   optional_fields: OptionalFieldKey[];
+  /** Bars or lounges already recorded here, offered as suggestions. */
+  stations: string[];
 };
 
 const label = "block text-sm font-medium mb-1.5";
@@ -79,7 +81,8 @@ function LogOneShift({
       <section className="rounded-xl border border-black/10 dark:border-white/15 p-5">
         <h2 className="text-base font-medium">Saved</h2>
         <p className="mt-2 text-sm opacity-80">
-          {s.workplaceName} · {readableDate(s.shift_date)}
+          {s.workplaceName}
+          {s.station ? ` · ${s.station}` : ""} · {readableDate(s.shift_date)}
           <br />
           {s.clock_in}–{s.clock_out}
           {hours === null ? "" : ` · ${hours} hrs`} · $
@@ -216,6 +219,31 @@ function ConfirmationCard({
         </select>
         <FieldError message={errors.workplace_id} />
       </div>
+
+      {tracks("station") ? (
+        <div>
+          <label className={label} htmlFor="station">
+            {optionalLabel("station")}
+          </label>
+          <input
+            id="station"
+            name="station"
+            type="text"
+            list="known-stations"
+            defaultValue={draft.station ?? ""}
+            placeholder="Bar 309"
+            className={field}
+          />
+          {/* Suggesting what has been used here keeps one bar under one
+              spelling, which is the only thing that makes comparing them work. */}
+          <datalist id="known-stations">
+            {(selected?.stations ?? []).map((s) => (
+              <option key={s} value={s} />
+            ))}
+          </datalist>
+          <FieldError message={errors.station} />
+        </div>
+      ) : null}
 
       <div>
         <label className={label} htmlFor="shift_date">

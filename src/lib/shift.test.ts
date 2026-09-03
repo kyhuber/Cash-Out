@@ -11,6 +11,7 @@ import { sanitizeParsed, type ParserWorkplace } from "./parse-shift";
 
 const valid = {
   workplace_id: "3f1a8c2e-5b7d-4e19-9c3a-2d6f8b0e4a71",
+  station: "Bar 309",
   shift_date: "2026-08-30",
   clock_in: "16:00",
   clock_out: "02:00",
@@ -61,6 +62,21 @@ describe("shiftSchema", () => {
   });
 });
 
+describe("shiftSchema station handling", () => {
+  it("normalises a blank station to null", () => {
+    for (const blank of ["", "   ", null]) {
+      const r = shiftSchema.safeParse({ ...valid, station: blank });
+      expect(r.success, JSON.stringify(blank)).toBe(true);
+      expect(r.data?.station).toBeNull();
+    }
+  });
+
+  it("trims a station it keeps", () => {
+    const r = shiftSchema.safeParse({ ...valid, station: "  Bar 309  " });
+    expect(r.data?.station).toBe("Bar 309");
+  });
+});
+
 describe("pickTrackedFields", () => {
   it("keeps only what the workplace tracks", () => {
     expect(
@@ -84,7 +100,13 @@ describe("pickTrackedFields", () => {
   it("never puts a column-backed field in the JSON", () => {
     // tip_out has its own column; duplicating it here would let the two drift.
     expect(JSON_FIELD_KEYS).not.toContain("tip_out");
-    expect(pickTrackedFields({ tip_out: 35 }, ["tip_out"])).toEqual({});
+    expect(JSON_FIELD_KEYS).not.toContain("station");
+    expect(
+      pickTrackedFields({ tip_out: 35, station: "Bar 309" }, [
+        "tip_out",
+        "station",
+      ]),
+    ).toEqual({});
   });
 
   it("trims what it keeps", () => {
@@ -122,7 +144,8 @@ describe("localToday", () => {
 const lumen: ParserWorkplace = {
   id: "3f1a8c2e-5b7d-4e19-9c3a-2d6f8b0e4a71",
   name: "Lumen Field",
-  optional_fields: ["total_sales", "tip_out"],
+  optional_fields: ["total_sales", "tip_out", "station"],
+  stations: ["Bar 309", "Moët Lounge"],
 };
 
 describe("sanitizeParsed", () => {
@@ -159,6 +182,33 @@ describe("sanitizeParsed", () => {
 
   it("rejects negative money", () => {
     expect(clean({ tips_card: -20 }).tips_card).toBeNull();
+  });
+
+  it("snaps a station onto the spelling already recorded there", () => {
+    // The reason the field exists is comparing bars. "bar 309" landing beside
+    // "Bar 309" would split one bar's tips across two rows and defeat that.
+    const cases = ["bar 309", "BAR 309", "  Bar 309  "];
+    for (const said of cases) {
+      expect(clean({ workplace_id: lumen.id, station: said }).station).toBe(
+        "Bar 309",
+      );
+    }
+  });
+
+  it("keeps a station it has not seen before", () => {
+    expect(
+      clean({ workplace_id: lumen.id, station: "North Bar" }).station,
+    ).toBe("North Bar");
+  });
+
+  it("drops a station for a workplace that doesn't track one", () => {
+    const noStation: ParserWorkplace = { ...lumen, optional_fields: ["notes"] };
+    expect(
+      sanitizeParsed(
+        { ...EMPTY_PARSED_SHIFT, workplace_id: noStation.id, station: "Bar 309" },
+        [noStation],
+      ).station,
+    ).toBeNull();
   });
 
   it("keeps an unsplit total only when there is no split", () => {
