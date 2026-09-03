@@ -24,19 +24,30 @@ push that changes one. It needs one secret from you.
 
 **1. Get your database connection string**
 
-Supabase → **Project Settings → Database → Connection string** → the **Session
-pooler** one. It looks like:
+It is **not** under Settings. Open your project and click the **Connect**
+button at the **top of the page** — that opens a panel with three connection
+strings in it.
 
-    postgresql://postgres.abcdefgh:[YOUR-PASSWORD]@aws-0-us-west-1.pooler.supabase.com:5432/postgres
+- [ ] Pick the **Session pooler** one
 
-- [ ] Copy it and replace `[YOUR-PASSWORD]` with your database password
+It looks like this, and the host contains the word `pooler`:
 
-⚠️ **It must be the session pooler string, not the direct one.** Direct
-connections are IPv6-only and GitHub's runners have no IPv6, so the direct
-string will just hang until it times out.
+    postgresql://postgres.abcdefgh:[YOUR-PASSWORD]@aws-1-us-west-1.pooler.supabase.com:5432/postgres
 
-*Don't remember the password? Same page → **Reset database password**. Resetting
-it doesn't affect the app — it connects with the publishable key, not this.*
+- [ ] Replace `[YOUR-PASSWORD]` with your database password
+
+⚠️ **It must be the Session pooler, not Direct connection.** Direct connections
+need IPv6 (or a paid IPv4 add-on) and GitHub's runners are IPv4-only, so the
+direct string won't error — it will hang until it times out, which is a
+miserable thing to debug. The session pooler is IPv4 on every plan, including
+free.
+
+⚠️ **Not the Transaction pooler either** (port `6543`). It doesn't support
+prepared statements, and migrations need a real session.
+
+*Don't remember the password? **Settings → Database → Database password →
+Reset database password.** Resetting it doesn't affect the app, which connects
+with the publishable key rather than this one.*
 
 **2. Add it to GitHub**
 

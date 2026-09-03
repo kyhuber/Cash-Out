@@ -35,9 +35,12 @@ jobs:
 
       - name: Apply migrations
         env:
-          # Project Settings → Database → Connection string. Use the SESSION
-          # POOLER one: direct connections are IPv6-only and GitHub's runners
-          # have no IPv6, so the direct string times out here.
+          # From the Connect button at the top of the Supabase project page
+          # (not Settings). Use the SESSION POOLER string: it is IPv4 on every
+          # plan, while direct connections need IPv6 or a paid IPv4 add-on, and
+          # GitHub's runners are IPv4-only — the direct string hangs rather
+          # than failing usefully. Not the transaction pooler (port 6543)
+          # either: it has no prepared statements and no real session.
           DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           set -euo pipefail
@@ -47,6 +50,19 @@ jobs:
                  "Settings → Secrets and variables → Actions."
             exit 1
           fi
+
+          case "$DATABASE_URL" in
+            *:6543/*)
+              echo "::error::That looks like the TRANSACTION pooler (port 6543)," \
+                   "which has no prepared statements. Use the Session pooler" \
+                   "string from the Connect button instead."
+              exit 1 ;;
+            *pooler.supabase.com*) : ;;
+            *)
+              echo "::warning::Host does not look like a Supavisor pooler." \
+                   "A direct connection needs IPv6 and will hang on an IPv4-only" \
+                   "runner. Use the Session pooler string if this job times out." ;;
+          esac
 
           shopt -s nullglob
           for f in supabase/migrations/*.sql; do
