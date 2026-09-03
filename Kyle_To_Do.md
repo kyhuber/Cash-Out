@@ -26,6 +26,11 @@ Supabase → **SQL Editor** → **New query** → paste each file's contents and
 
 Each should say "Success. No rows returned."
 
+✅ **Running one twice is safe now.** Every migration is written so a second run
+does nothing rather than failing partway through. If you already ran 0003 and
+got `column "pay_period_end_date" already exists`, that was the old version —
+nothing was broken by it, and the current file will run clean.
+
 **No redeploy needed** — this is a database change, not an environment one.
 
 *Why 0003: the table now stores the pay period's end date and the pay date,

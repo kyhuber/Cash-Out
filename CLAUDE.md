@@ -100,7 +100,12 @@ npm test             # vitest unit tests
 ```
 
 `scripts/test-db.sh` needs a local Postgres and drops/recreates its target
-database — point it at a scratch DB, never at the real Supabase project.
+database — point it at a scratch DB, never at the real Supabase project. It
+applies every migration TWICE, because they are pasted into the Supabase SQL
+editor by hand and nothing tracks which have run. Every migration must
+therefore be idempotent: `add column if not exists`, `drop constraint if
+exists` before adding, `drop policy if exists` before creating. A migration
+that fails on a second run leaves a half-applied schema.
 
 Note: Next 16 renamed Middleware to Proxy. Session refresh lives in
 `src/proxy.ts`, and it is NOT an authorization boundary — pages check the

@@ -21,17 +21,28 @@ psql "$ADMIN_URL" -qc "drop database if exists ${TEST_DB};" -c "create database 
 # Migrations are globbed rather than listed, so a new one is exercised here the
 # moment it is added — a hardcoded list silently stops testing the newest file.
 shopt -s nullglob
-FILES=(
-  "$ROOT/supabase/tests/00_local_harness.sql"
-  "$ROOT"/supabase/migrations/*.sql
-  "$ROOT/supabase/tests/01_rls_test.sql"
-  "$ROOT/supabase/tests/02_constraint_test.sql"
-)
+MIGRATIONS=("$ROOT"/supabase/migrations/*.sql)
 
-for f in "${FILES[@]}"
-do
+echo "==> 00_local_harness.sql"
+psql "$TEST_URL" -v ON_ERROR_STOP=1 -q -f "$ROOT/supabase/tests/00_local_harness.sql"
+
+for f in "${MIGRATIONS[@]}"; do
   echo "==> $(basename "$f")"
   psql "$TEST_URL" -v ON_ERROR_STOP=1 -q -f "$f"
 done
 
-echo "==> all database tests passed"
+# Apply every migration a SECOND time. These get pasted into the Supabase SQL
+# editor by hand, which tracks nothing, so re-running one is a matter of when —
+# and "column already exists" mid-way through leaves a half-applied schema.
+# Every migration must be idempotent, and this is what proves it.
+for f in "${MIGRATIONS[@]}"; do
+  echo "==> $(basename "$f") (re-run)"
+  psql "$TEST_URL" -v ON_ERROR_STOP=1 -q -f "$f"
+done
+
+for f in "$ROOT/supabase/tests/01_rls_test.sql" "$ROOT/supabase/tests/02_constraint_test.sql"; do
+  echo "==> $(basename "$f")"
+  psql "$TEST_URL" -v ON_ERROR_STOP=1 -q -f "$f"
+done
+
+echo "==> all database tests passed (migrations applied twice)"

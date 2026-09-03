@@ -4,9 +4,12 @@
 --
 -- Without this, onboarding would have to store a meaningless date for those two
 -- types just to satisfy NOT NULL.
+--
+-- Safe to run more than once.
 
 alter table workplaces alter column pay_period_anchor_date drop not null;
 
+alter table workplaces drop constraint if exists anchor_required_for_offset_periods;
 alter table workplaces add constraint anchor_required_for_offset_periods
   check (
     pay_period_type in ('semi_monthly', 'monthly')

@@ -3,10 +3,17 @@
 -- Users are Supabase's built-in `auth.users`; there is no separate users table.
 -- It already carries id / email / provider / created_at, so duplicating it would
 -- only create a second thing to keep in sync.
+--
+-- Safe to run more than once. Migrations here are applied by hand in the
+-- Supabase SQL editor, which tracks nothing, so re-running one is a matter of
+-- when, not if — every statement below is guarded accordingly.
 
-create type pay_period_type as enum ('weekly', 'biweekly', 'semi_monthly', 'monthly');
+do $$ begin
+  create type pay_period_type as enum ('weekly', 'biweekly', 'semi_monthly', 'monthly');
+exception when duplicate_object then null;
+end $$;
 
-create table workplaces (
+create table if not exists workplaces (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
 
@@ -32,7 +39,7 @@ create table workplaces (
     check (optional_fields <@ array['total_sales', 'tip_out', 'shift_type', 'guest_count', 'notes']::text[])
 );
 
-create table shifts (
+create table if not exists shifts (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
   workplace_id uuid not null references workplaces (id) on delete cascade,
@@ -70,12 +77,12 @@ create table shifts (
   constraint shift_has_duration check (clock_in <> clock_out)
 );
 
-create index workplaces_user_idx on workplaces (user_id);
-create index shifts_user_date_idx on shifts (user_id, shift_date desc);
-create index shifts_workplace_date_idx on shifts (workplace_id, shift_date desc);
+create index if not exists workplaces_user_idx on workplaces (user_id);
+create index if not exists shifts_user_date_idx on shifts (user_id, shift_date desc);
+create index if not exists shifts_workplace_date_idx on shifts (workplace_id, shift_date desc);
 
 -- updated_at maintenance
-create function set_updated_at() returns trigger
+create or replace function set_updated_at() returns trigger
   language plpgsql
   set search_path = ''
 as $$
@@ -85,8 +92,10 @@ begin
 end;
 $$;
 
+drop trigger if exists workplaces_set_updated_at on workplaces;
 create trigger workplaces_set_updated_at before update on workplaces
   for each row execute function set_updated_at();
+drop trigger if exists shifts_set_updated_at on shifts;
 create trigger shifts_set_updated_at before update on shifts
   for each row execute function set_updated_at();
 
@@ -94,29 +103,37 @@ create trigger shifts_set_updated_at before update on shifts
 alter table workplaces enable row level security;
 alter table shifts enable row level security;
 
+drop policy if exists workplaces_select on workplaces;
 create policy workplaces_select on workplaces for select
   using (auth.uid() = user_id);
+drop policy if exists workplaces_insert on workplaces;
 create policy workplaces_insert on workplaces for insert
   with check (auth.uid() = user_id);
+drop policy if exists workplaces_update on workplaces;
 create policy workplaces_update on workplaces for update
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists workplaces_delete on workplaces;
 create policy workplaces_delete on workplaces for delete
   using (auth.uid() = user_id);
 
+drop policy if exists shifts_select on shifts;
 create policy shifts_select on shifts for select
   using (auth.uid() = user_id);
 -- The workplace check matters: owning the row is not enough, you must also own
 -- the workplace it points at, or a shift could be filed against someone else's job.
+drop policy if exists shifts_insert on shifts;
 create policy shifts_insert on shifts for insert
   with check (
     auth.uid() = user_id
     and exists (select 1 from workplaces w where w.id = workplace_id and w.user_id = auth.uid())
   );
+drop policy if exists shifts_update on shifts;
 create policy shifts_update on shifts for update
   using (auth.uid() = user_id)
   with check (
     auth.uid() = user_id
     and exists (select 1 from workplaces w where w.id = workplace_id and w.user_id = auth.uid())
   );
+drop policy if exists shifts_delete on shifts;
 create policy shifts_delete on shifts for delete
   using (auth.uid() = user_id);
