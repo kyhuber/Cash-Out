@@ -1,0 +1,59 @@
+# Applies the database migrations to Supabase, so they never have to be pasted
+# into the SQL editor by hand.
+#
+# Every migration is written to be safe to run twice (scripts/test-db.sh proves
+# it by applying them all a second time), so this deliberately applies ALL of
+# them in order on every run rather than tracking which have already been
+# applied. There is no migration state to drift, get corrupted, or repair — a
+# re-run is simply a no-op.
+name: Migrate database
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+      - ".github/workflows/migrate.yml"
+  # Lets you re-apply from the Actions tab without pushing anything.
+  workflow_dispatch:
+
+# Two runs applying migrations at once would interleave DDL on one database.
+concurrency:
+  group: migrate-database
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the Postgres client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Apply migrations
+        env:
+          # Project Settings → Database → Connection string. Use the SESSION
+          # POOLER one: direct connections are IPv6-only and GitHub's runners
+          # have no IPv6, so the direct string times out here.
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "::error::SUPABASE_DB_URL is not set. Add it under" \
+                 "Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
+          shopt -s nullglob
+          for f in supabase/migrations/*.sql; do
+            echo "==> $(basename "$f")"
+            # ON_ERROR_STOP so a failure stops here instead of racing on and
+            # leaving later migrations applied over a broken one.
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 --single-transaction -q -f "$f"
+          done
+
+          echo "==> all migrations applied"

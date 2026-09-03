@@ -168,6 +168,9 @@ function ConfirmationCard({
   const [workplaceId, setWorkplaceId] = useState(
     draft.workplace_id ?? (workplaces.length === 1 ? workplaces[0].id : ""),
   );
+  // Controlled so the running duration below them stays live as they are edited.
+  const [clockIn, setClockIn] = useState(draft.clock_in ?? "");
+  const [clockOut, setClockOut] = useState(draft.clock_out ?? "");
   // Controlled so the "all card" shortcut can fill them.
   const [tipsCard, setTipsCard] = useState(
     draft.tips_card === null ? "" : String(draft.tips_card),
@@ -182,6 +185,8 @@ function ConfirmationCard({
 
   const optionalLabel = (key: OptionalFieldKey) =>
     OPTIONAL_FIELDS.find((f) => f.key === key)?.label ?? key;
+
+  const hours = shiftHours(clockIn, clockOut);
 
   return (
     <form action={action} className="flex flex-col gap-5">
@@ -263,33 +268,48 @@ function ConfirmationCard({
         <FieldError message={errors.shift_date} />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className={label} htmlFor="clock_in">
-            Clocked in
-          </label>
-          <input
-            id="clock_in"
-            name="clock_in"
-            type="time"
-            defaultValue={draft.clock_in ?? ""}
-            className={field}
-          />
-          <FieldError message={errors.clock_in} />
+      <div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={label} htmlFor="clock_in">
+              Clocked in
+            </label>
+            <input
+              id="clock_in"
+              name="clock_in"
+              type="time"
+              value={clockIn}
+              onChange={(e) => setClockIn(e.target.value)}
+              className={field}
+            />
+            <FieldError message={errors.clock_in} />
+          </div>
+          <div>
+            <label className={label} htmlFor="clock_out">
+              Clocked out
+            </label>
+            <input
+              id="clock_out"
+              name="clock_out"
+              type="time"
+              value={clockOut}
+              onChange={(e) => setClockOut(e.target.value)}
+              className={field}
+            />
+            <FieldError message={errors.clock_out} />
+          </div>
         </div>
-        <div>
-          <label className={label} htmlFor="clock_out">
-            Clocked out
-          </label>
-          <input
-            id="clock_out"
-            name="clock_out"
-            type="time"
-            defaultValue={draft.clock_out ?? ""}
-            className={field}
-          />
-          <FieldError message={errors.clock_out} />
-        </div>
+
+        {/* The one number that makes a misread am/pm obvious. Wrong times still
+            look like times; a 20-hour shift does not look like a shift. */}
+        {hours === null ? null : (
+          <p className={`${hint} tabular-nums`}>
+            {hours} hours
+            {hours > 16
+              ? " — that's a long shift, check the times are the right way round"
+              : ""}
+          </p>
+        )}
       </div>
 
       {draft.tips_total_unsplit !== null ? (

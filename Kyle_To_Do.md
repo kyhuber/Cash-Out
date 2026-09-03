@@ -14,31 +14,63 @@ before the site will work again.** Start at "Do this first".
 
 # 🚨 Do this first — the site is broken until you do
 
-**Two minutes.** I changed the workplaces table, and the deploy that's going out
-now expects those columns. Until you run this, adding or editing a workplace
-will fail.
+**Pick either option. Option A is five minutes once and then you never paste
+SQL again.**
 
-Supabase → **SQL Editor** → **New query** → paste each file's contents and
-**Run**, in this order:
+## Option A — let GitHub do it (recommended)
+
+There's now a workflow in the repo that applies migrations for you, on every
+push that changes one. It needs one secret from you.
+
+**1. Get your database connection string**
+
+Supabase → **Project Settings → Database → Connection string** → the **Session
+pooler** one. It looks like:
+
+    postgresql://postgres.abcdefgh:[YOUR-PASSWORD]@aws-0-us-west-1.pooler.supabase.com:5432/postgres
+
+- [ ] Copy it and replace `[YOUR-PASSWORD]` with your database password
+
+⚠️ **It must be the session pooler string, not the direct one.** Direct
+connections are IPv6-only and GitHub's runners have no IPv6, so the direct
+string will just hang until it times out.
+
+*Don't remember the password? Same page → **Reset database password**. Resetting
+it doesn't affect the app — it connects with the publishable key, not this.*
+
+**2. Add it to GitHub**
+
+GitHub → your repo → **Settings → Secrets and variables → Actions** → **New
+repository secret**:
+
+| Name | Value |
+|---|---|
+| `SUPABASE_DB_URL` | the connection string from step 1 |
+
+- [ ] Added
+
+**3. Run it**
+
+GitHub → **Actions** tab → **Migrate database** → **Run workflow**.
+
+- [ ] Ran it, and it went green
+
+That's it. From now on, when I add a migration it applies itself when I push.
+
+⚠️ Worth knowing: this gives GitHub Actions write access to your live database.
+Fine for a personal project, and the secret is only readable by workflows in
+your own repo — but it's a real key, so treat it like one.
+
+## Option B — paste it by hand, as before
+
+Supabase → **SQL Editor** → **New query** → paste and **Run**, in order:
 
 - [ ] [`0003_pay_period_dates.sql`](https://github.com/kyhuber/Cash-Out/blob/main/supabase/migrations/0003_pay_period_dates.sql)
 - [ ] [`0004_shift_station.sql`](https://github.com/kyhuber/Cash-Out/blob/main/supabase/migrations/0004_shift_station.sql)
 
-Each should say "Success. No rows returned."
-
-✅ **Running one twice is safe now.** Every migration is written so a second run
-does nothing rather than failing partway through. If you already ran 0003 and
-got `column "pay_period_end_date" already exists`, that was the old version —
-nothing was broken by it, and the current file will run clean.
-
-**No redeploy needed** — this is a database change, not an environment one.
-
-*Why 0003: the table now stores the pay period's end date and the pay date,
-which it had nowhere to put before. Both columns are nullable, so your two
-existing workplaces are untouched.*
-
-*Why 0004: shifts can now record which bar or lounge inside the venue you
-worked — see below.*
+✅ **Re-running one is safe now.** Every migration is written so a second run
+does nothing instead of failing. The `column "pay_period_end_date" already
+exists` error you hit was the old version; nothing was broken by it.
 
 ### Then, once those have run
 
@@ -46,11 +78,6 @@ worked — see below.*
       (last day of the pay period, and the date you got paid for it).
 - [ ] While you're in there, tick **"Bar or lounge"** under *What does this job
       report?* for both venues, then save.
-
-Your existing entries only carry a start date. The form guesses the end date
-from the schedule already stored, but it can't know your pay date — only your
-stub has that. Saving once with all three fills the gaps and re-checks the
-dates against each other.
 
 ---
 
@@ -77,13 +104,19 @@ Worth covering across the batch:
 Where the right answer isn't obvious from the sentence alone, add a line saying
 what it should have been. Most won't need it.
 
-### One question still open
+### Your time convention is now built in
 
-**Do you ever work a morning shift?** Your examples give bare times — "4:40",
-"9:20" — with no AM/PM, and the parser currently assumes evening, which is
-right for arena work. If you ever work 8am–4pm, that assumption turns a morning
-shift into an evening one, and the times on the card would look plausible
-enough that you'd click straight past them.
+You settled the open AM/PM question, and the parser follows your rule literally
+rather than guessing at what's plausible:
+
+- No marker means **PM**. "4:40" is 16:40, "from 2 until 9:46" is 14:00–21:46.
+- **"am"** means morning, as written.
+- An **"am" end time** after an afternoon start is past midnight, so "4 until
+  1 am" is 16:00–01:00 and the shift still belongs to the day it started.
+
+The card now also shows the **hours** under the two time boxes, and warns above
+16. That's the backstop: a misread am/pm still looks like a perfectly ordinary
+time, but it doesn't look like an ordinary shift length.
 
 ---
 

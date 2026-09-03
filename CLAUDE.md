@@ -45,6 +45,10 @@ Read `Cash_Out_PRD.md` first — it's the full spec. This file is for the invari
   free text, but both the parser and the card are fed the ones already recorded
   at that workplace: two spellings of one bar split its totals and defeat the
   only reason the field exists.
+- Times with no am/pm marker are PM. Kyle's stated convention: a morning start
+  is always written "am", so an unmarked time is never morning, and an "am" end
+  time after an afternoon start is past midnight. The parser applies this
+  literally rather than reasoning about plausibility.
 - "Today" for a shift comes from the BROWSER, never the server. Vercel runs in
   UTC and an evening shift on the US west coast is already tomorrow there, so a
   server-side date resolves "last night" to the wrong day and can file a shift
@@ -106,6 +110,11 @@ editor by hand and nothing tracks which have run. Every migration must
 therefore be idempotent: `add column if not exists`, `drop constraint if
 exists` before adding, `drop policy if exists` before creating. A migration
 that fails on a second run leaves a half-applied schema.
+
+Migrations reach Supabase through `.github/workflows/migrate.yml`, which applies
+every file in order on any push that touches `supabase/migrations/`. It tracks
+no state precisely because they are idempotent — a re-run is a no-op, so there
+is no migration table to drift or repair.
 
 Note: Next 16 renamed Middleware to Proxy. Session refresh lives in
 `src/proxy.ts`, and it is NOT an authorization boundary — pages check the

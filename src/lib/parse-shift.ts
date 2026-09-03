@@ -100,9 +100,12 @@ DATE
 - A shift belongs to the date it STARTED. A shift described as "last night, 8 til 2" started the previous evening and ended at 2am today — the date is the previous day, not today.
 - If they gave no time reference at all, return null. Do not assume today.
 
-TIMES
-- 24-hour "HH:MM". "four" for someone working an evening shift is 16:00; "til 2" after an evening start is 02:00.
-- Times only. Do not encode the date here.
+TIMES — read these rules literally, they are a stated convention, not an inference
+- 24-hour "HH:MM".
+- A time with NO am/pm marker is PM. "4:40" is 16:40. "9:20" is 21:20. "2" is 14:00. "from 2 until 9:46" is 14:00 to 21:46. Do not reason about whether PM seems plausible; a morning start is always marked "am" explicitly, so an unmarked time is never morning.
+- A time marked "am" is morning as written: "8 am" is 08:00.
+- An "am" time at the END of a shift that began in the afternoon or evening is after midnight, on the NEXT calendar day: "4 until 1 am" is clock_in 16:00, clock_out 01:00.
+- Record clock times only, never a date. A shift belongs to the day it STARTED even when it ends after midnight, and the app works out the wrap itself.
 - If they said when they started but trailed off about the end ("til close", "til whenever"), return the start and null for the end. Do not guess a closing time.
 
 MONEY
