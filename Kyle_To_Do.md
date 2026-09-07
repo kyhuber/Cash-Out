@@ -160,21 +160,30 @@ Worth deliberately trying across your first several:
 | 4. Shift history | ✅ Built |
 | 5. Pay-period summary | ✅ Built |
 
-**The home page is now ordered the way you use it:** the text box, then your
-recent shifts, then workplaces. Workplaces used to be big tappable cards that
-opened a settings form — a lot of visual weight promising content and
-delivering a form you'll touch twice a year. They're now a quiet row with a
-live summary and an explicit **Edit** link.
+**Next paycheck now leads the page** — one card per job, soonest first, showing
+what that check will be and the Friday it lands.
 
-**Recent shifts** lists what you've logged newest-first, with a chip to filter
-by employer. Tap any shift to correct it or delete it. That closes the gap your
-own example opened: *"I expect I earned some tips, maybe $50"* — you can log a
-guess now and fix the number when the card tips post.
+This fixed a real error, not just the layout. The page used to show *the pay
+period containing today*, which is not the same thing as your next check. A
+period is paid the Friday after it ends, so in the stretch between a period
+closing and its payday, the money arriving next belongs to the period that
+already finished — while "the current period" has barely started. For several
+days each cycle you were being shown the wrong period's money.
 
-**Each workplace shows its current pay period**: dates, hours, tips, and
-estimated gross at `hours × wage + tips`. That's the number to hold against a
-pay stub. Tip-out is tracked separately so it never inflates what the employer
-owes you.
+Each card says whether the period is **closed** (the figure is final) or
+**still open** (it says "so far", and can only go up). Nothing is extrapolated:
+shifts you haven't worked yet are never guessed at.
+
+It also cross-checks the pay date on your stub against the Friday rule. If they
+disagree, the card says so — either the rule doesn't hold for that job or a
+date was mistyped, and both are worth knowing.
+
+**Below that:** the logger, then recent shifts (filterable by employer, tap any
+to correct or delete it), then workplaces as a quiet settings row.
+
+Workplaces no longer carry their own money figure. They used to show "this
+period", which would now sit on the same screen as a *different* number for the
+same job — the one being paid next. Two totals for one job is worse than one.
 
 *Tax withholding is deliberately not in that number, and neither is overtime.
 Both are a later phase — a half-built version of either produces a figure that
@@ -255,6 +264,9 @@ Kept so we don't relitigate them. Say the word if you want any reopened.
 | Summary headline number | What the employer owes: hours × wage + tips. Tip-out subtracted only for take-home | Sep 7 |
 | Tax withholding and overtime | Excluded from the estimate on purpose. A partial version looks authoritative and isn't. Later phase | Sep 7 |
 | Scope | Log shift data, keep it available to look at, calculate what a paycheck should look like. No analytics, trends, projections or comparisons — and nothing built speculatively for later | Sep 7 |
+| Headline of the app | The next paycheck per job, above the logger. Not the period containing today — those differ for several days each cycle | Sep 7 |
+| Pay date rule | The first Friday strictly after a period ends. No holiday or weekend shifting for now | Sep 7 |
+| Open vs closed periods | An open period's figure is labelled "so far" and never extrapolated to what the finished period might total | Sep 7 |
 
 ---
 
@@ -278,6 +290,8 @@ Kept so we don't relitigate them. Say the word if you want any reopened.
 - **Pay-period summary** per workplace: period dates, hours, tips and estimated
   gross at `hours × wage + tips`, computed from the browser's date so it can't
   land in the wrong period.
+- **Next paycheck**, leading the home page: the amount and the Friday it lands,
+  for each job, with the period marked closed or still open.
 - **Migrations:** all idempotent, applied by CI, and the test suite applies every
   one twice to prove a re-run is a no-op.
 - **PWA shell:** manifest, icons, iOS home-screen support.

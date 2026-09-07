@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  addDaysTo,
   isDateOnly,
+  nextFridayAfter,
   minutesToHours,
   payPeriodEndFor,
   payPeriodFor,
@@ -269,5 +271,48 @@ describe("isDateOnly", () => {
     expect(isDateOnly("2026-13-01")).toBe(false);
     expect(isDateOnly("08/31/2026")).toBe(false);
     expect(isDateOnly("")).toBe(false);
+  });
+});
+
+describe("nextFridayAfter", () => {
+  it("finds the Friday following each day of the week", () => {
+    // Sun Sep 13 2026 through Sat Sep 19 2026.
+    const cases: [string, string][] = [
+      ["2026-09-13", "2026-09-18"], // Sunday   -> that week's Friday
+      ["2026-09-14", "2026-09-18"], // Monday
+      ["2026-09-15", "2026-09-18"], // Tuesday
+      ["2026-09-16", "2026-09-18"], // Wednesday
+      ["2026-09-17", "2026-09-18"], // Thursday
+      ["2026-09-18", "2026-09-25"], // Friday   -> STRICTLY after, so next week
+      ["2026-09-19", "2026-09-25"], // Saturday
+    ];
+    for (const [end, paid] of cases) {
+      expect(nextFridayAfter(end), end).toBe(paid);
+    }
+  });
+
+  it("crosses month and year boundaries", () => {
+    expect(nextFridayAfter("2026-09-30")).toBe("2026-10-02");
+    expect(nextFridayAfter("2026-12-31")).toBe("2027-01-01");
+  });
+
+  it("always lands on a Friday", () => {
+    let d = "2026-01-01";
+    for (let i = 0; i < 400; i++) {
+      const paid = nextFridayAfter(d);
+      const [y, m, day] = paid.split("-").map(Number);
+      expect(new Date(Date.UTC(y, m - 1, day)).getUTCDay(), paid).toBe(5);
+      expect(paid > d, `${paid} must be after ${d}`).toBe(true);
+      d = addDaysTo(d, 1);
+    }
+  });
+});
+
+describe("addDaysTo", () => {
+  it("moves forward and back across boundaries", () => {
+    expect(addDaysTo("2026-09-30", 1)).toBe("2026-10-01");
+    expect(addDaysTo("2026-10-01", -1)).toBe("2026-09-30");
+    expect(addDaysTo("2028-02-28", 1)).toBe("2028-02-29");
+    expect(addDaysTo("2026-02-28", 1)).toBe("2026-03-01");
   });
 });

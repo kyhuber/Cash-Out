@@ -9,6 +9,10 @@ import {
   WorkplaceRows,
   type RowWorkplace,
 } from "@/app/workplaces/workplace-rows";
+import {
+  NextPaychecks,
+  type PaycheckWorkplace,
+} from "@/app/paychecks/next-paychecks";
 import type { ShiftRow } from "@/lib/shift-summary";
 import type { OptionalFieldKey } from "@/lib/workplace";
 import type { DateOnly, PayPeriodType } from "@/lib/pay-period";
@@ -65,7 +69,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     supabase
       .from("workplaces")
       .select(
-        "id, name, hourly_wage, pay_period_type, pay_period_anchor_date, overtime_enabled, optional_fields",
+        "id, name, hourly_wage, pay_period_type, pay_period_anchor_date, pay_period_end_date, pay_date, overtime_enabled, optional_fields",
       )
       .order("created_at", { ascending: true }),
     loadRecentShifts(supabase),
@@ -102,7 +106,15 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     name: w.name,
     hourly_wage: Number(w.hourly_wage),
     pay_period_type: w.pay_period_type as PayPeriodType,
+  }));
+
+  const forPaychecks: PaycheckWorkplace[] = (workplaces ?? []).map((w) => ({
+    id: w.id,
+    name: w.name,
+    pay_period_type: w.pay_period_type as PayPeriodType,
     pay_period_anchor_date: (w.pay_period_anchor_date ?? null) as DateOnly | null,
+    pay_period_end_date: (w.pay_period_end_date ?? null) as DateOnly | null,
+    pay_date: (w.pay_date ?? null) as DateOnly | null,
   }));
 
   const workplaceNames = new Map(
@@ -121,7 +133,25 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
       </header>
       <p className="mt-1 text-sm opacity-70">{user.email}</p>
 
-      {/* Logging a shift is the product, so it leads. */}
+      {/* What lands next is why you open this at all, so it leads. The logger
+          is one text box, so both still sit above the fold. */}
+      {hasWorkplaces ? (
+        shiftsError ? (
+          // The headline figure vanishing without a word would be its own kind
+          // of wrong answer. The error itself is reported once, below.
+          <section className="mt-8">
+            <h2 className="text-sm font-medium uppercase tracking-wide opacity-60">
+              Next paycheck
+            </h2>
+            <p className="mt-3 text-sm opacity-70">
+              Can&apos;t work this out until your shifts load — see below.
+            </p>
+          </section>
+        ) : (
+          <NextPaychecks workplaces={forPaychecks} shifts={shifts} />
+        )
+      ) : null}
+
       {hasWorkplaces ? (
         <section className="mt-8">
           <ShiftLogger workplaces={forLogger} />
@@ -165,11 +195,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
           </p>
         ) : hasWorkplaces ? (
           <>
-            <WorkplaceRows
-              workplaces={forRows}
-              shifts={shifts}
-              shiftsUnavailable={!!shiftsError}
-            />
+            <WorkplaceRows workplaces={forRows} />
             <Link
               href="/workplaces/new"
               className="mt-3 block text-sm underline opacity-70"

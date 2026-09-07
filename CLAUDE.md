@@ -57,6 +57,17 @@ Read `Cash_Out_PRD.md` first — it's the full spec. This file is for the invari
   server-side from the workplace row. Never accept them from a form. Editing a
   shift must NOT rewrite them — the exception is moving a shift to a different
   workplace, where the old job's wage is meaningless.
+- The home page's headline is the NEXT PAYCHECK, which is not the pay period
+  containing today. A period is paid on the Friday after it ends, so between a
+  period closing and its payday the money arriving next belongs to the period
+  that already finished. `nextPaycheck` picks the earliest pay date not yet
+  passed; never substitute "the current period" for it.
+- Pay dates are derived as the first Friday STRICTLY after a period ends, not
+  as a fixed day-count lag — a twice-monthly period ends on a different weekday
+  each time. `pay_date` from the user's stub is kept as a cross-check: if it
+  disagrees with the rule, say so rather than silently overriding either.
+- A paycheck figure for an open period is labelled "so far". It can still grow,
+  and nothing extrapolates it — shifts not yet worked are not guessed at.
 - The pay-period summary's headline number is what the EMPLOYER OWES:
   hours x wage + tips, with tip-out subtracted only for take-home. Overtime is
   deliberately not applied (the multiplier is captured but weekly-threshold

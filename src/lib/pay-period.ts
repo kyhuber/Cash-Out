@@ -184,3 +184,28 @@ export function payPeriodTypesMatching(
 export function payPeriodEndFor(start: DateOnly, type: PayPeriodType): DateOnly {
   return payPeriodFor(start, type, start).end;
 }
+
+/** `date` moved by `days`, staying a calendar date with no time or zone. */
+export function addDaysTo(date: DateOnly, days: number): DateOnly {
+  return format(addDays(parse(date), days));
+}
+
+/**
+ * The first Friday STRICTLY after `date`.
+ *
+ * Kyle's employers both pay on the Friday following the end of a pay period.
+ * A fixed day-count lag would be equivalent for weekly and biweekly work,
+ * where every period ends on the same weekday — but not for a twice-monthly
+ * one, whose periods end on the 15th and the last of the month and so land on
+ * a different weekday every time. Working forward to the next Friday is
+ * correct for every cadence.
+ *
+ * Strictly after, so a period ending on a Friday is paid the following week
+ * rather than the same day it closes.
+ */
+export function nextFridayAfter(date: DateOnly): DateOnly {
+  const FRIDAY = 5;
+  const day = parse(date).getUTCDay();
+  const delta = (FRIDAY - day + 7) % 7 || 7;
+  return addDaysTo(date, delta);
+}

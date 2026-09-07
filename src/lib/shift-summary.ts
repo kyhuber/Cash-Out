@@ -1,5 +1,7 @@
 import {
+  addDaysTo,
   minutesToHours,
+  nextFridayAfter,
   payPeriodFor,
   type DateOnly,
   type PayPeriod,
@@ -53,30 +55,29 @@ export function shiftsInPeriod(
   );
 }
 
+export type SummaryWorkplace = {
+  id: string;
+  pay_period_type: PayPeriodType;
+  pay_period_anchor_date: DateOnly | null;
+  /** The one pay date read off a stub, used to check the Friday rule holds. */
+  pay_date?: DateOnly | null;
+  pay_period_end_date?: DateOnly | null;
+};
+
 /**
- * Totals for the pay period containing `today` at one workplace.
+ * Totals for one pay period at one workplace.
  *
  * Each shift is valued at the wage stored ON THAT SHIFT, not the workplace's
  * current wage, so a raise part-way through a period doesn't retroactively
  * inflate the shifts worked before it.
  */
-export function periodSummary(
+export function summarisePeriod(
   shifts: ShiftRow[],
-  workplace: {
-    id: string;
-    pay_period_type: PayPeriodType;
-    pay_period_anchor_date: DateOnly | null;
-  },
-  today: DateOnly,
+  workplaceId: string,
+  period: PayPeriod,
 ): PeriodSummary {
-  const period = payPeriodFor(
-    today,
-    workplace.pay_period_type,
-    workplace.pay_period_anchor_date,
-  );
-
   const mine = shiftsInPeriod(
-    shifts.filter((s) => s.workplace_id === workplace.id),
+    shifts.filter((s) => s.workplace_id === workplaceId),
     period,
   );
 
@@ -96,5 +97,87 @@ export function periodSummary(
     hours: minutesToHours(minutes),
     tips: round2(tips),
     gross: round2(wages + tips),
+  };
+}
+
+export type Paycheck = {
+  workplaceId: string;
+  /** The Friday this period gets paid on. */
+  payDate: DateOnly;
+  period: PayPeriod;
+  /**
+   * True once the period has ended, so no further shift can be added to it and
+   * the amount is final. While it is false the figure can only go up.
+   */
+  periodClosed: boolean;
+  summary: PeriodSummary;
+  /**
+   * Set when the pay date read off the user's stub is not the Friday after that
+   * period ended. Either the rule doesn't hold for this job or a date was
+   * mistyped, and both are worth saying rather than quietly deriving from a
+   * rule that doesn't apply here.
+   */
+  stubPayDateMismatch?: { recorded: DateOnly; expected: DateOnly };
+};
+
+/**
+ * The next paycheck a workplace will pay, and what has been earned toward it.
+ *
+ * This is NOT the pay period containing today, and the difference is the whole
+ * point. A period is paid after it closes, so in the stretch between a period
+ * ending and its Friday, the money arriving next belongs to the period that has
+ * already finished — while "the current period" has barely started. Showing the
+ * current period there would answer a question nobody asked.
+ *
+ * Nothing here is forecast. It sums shifts already logged; a period still open
+ * is reported as open rather than extrapolated.
+ */
+export function nextPaycheck(
+  shifts: ShiftRow[],
+  workplace: SummaryWorkplace,
+  today: DateOnly,
+): Paycheck {
+  const periodFor = (date: DateOnly) =>
+    payPeriodFor(
+      date,
+      workplace.pay_period_type,
+      workplace.pay_period_anchor_date,
+    );
+
+  // Walk back far enough to catch a closed period still awaiting its Friday,
+  // and forward one in case today falls after the last one was already paid.
+  const candidates: PayPeriod[] = [];
+  let cursor = periodFor(today);
+  for (let i = 0; i < 3; i++) {
+    candidates.unshift(cursor);
+    cursor = periodFor(addDaysTo(cursor.start, -1));
+  }
+  candidates.push(periodFor(addDaysTo(candidates[candidates.length - 1].end, 1)));
+
+  // The earliest pay date that has not already passed.
+  const upcoming = candidates
+    .map((period) => ({ period, payDate: nextFridayAfter(period.end) }))
+    .filter((c) => c.payDate >= today)
+    .sort((a, b) => a.payDate.localeCompare(b.payDate))[0];
+
+  const { period, payDate } = upcoming;
+
+  const mismatch =
+    workplace.pay_date && workplace.pay_period_end_date
+      ? (() => {
+          const expected = nextFridayAfter(workplace.pay_period_end_date);
+          return workplace.pay_date === expected
+            ? undefined
+            : { recorded: workplace.pay_date, expected };
+        })()
+      : undefined;
+
+  return {
+    workplaceId: workplace.id,
+    payDate,
+    period,
+    periodClosed: period.end < today,
+    summary: summarisePeriod(shifts, workplace.id, period),
+    ...(mismatch ? { stubPayDateMismatch: mismatch } : {}),
   };
 }
