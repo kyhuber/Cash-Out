@@ -217,4 +217,41 @@ describe("sanitizeParsed", () => {
       clean({ tips_total_unsplit: 220, tips_card: 180 }).tips_total_unsplit,
     ).toBeNull();
   });
+
+  it.each([
+    { tips_total_unsplit: 0 },
+    { tips_total_unsplit: 0, tips_cash: 0 },
+    { tips_total_unsplit: 0, tips_card: 0 },
+  ])("turns an explicit zero total into zero cash and card tips: %j", (tips) => {
+    expect(clean(tips)).toMatchObject({
+      tips_cash: 0,
+      tips_card: 0,
+      tips_total_unsplit: null,
+      tip_out: null,
+    });
+  });
+
+  it("keeps unknown tips blank", () => {
+    expect(clean({})).toMatchObject({
+      tips_cash: null,
+      tips_card: null,
+      tips_total_unsplit: null,
+    });
+  });
+
+  it("does not interpret no cash tips as no card tips", () => {
+    expect(clean({ tips_cash: 0 })).toMatchObject({
+      tips_cash: 0,
+      tips_card: null,
+      tips_total_unsplit: null,
+    });
+  });
+
+  it("preserves a positive split amount over a conflicting zero total", () => {
+    expect(clean({ tips_total_unsplit: 0, tips_card: 25 })).toMatchObject({
+      tips_cash: null,
+      tips_card: 25,
+      tips_total_unsplit: null,
+    });
+  });
 });

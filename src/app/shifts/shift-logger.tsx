@@ -312,7 +312,7 @@ function ConfirmationCard({
         )}
       </div>
 
-      {draft.tips_total_unsplit !== null ? (
+      {draft.tips_total_unsplit !== null && draft.tips_total_unsplit > 0 ? (
         <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 px-4 py-3">
           <p className="text-sm">
             You said <strong>${draft.tips_total_unsplit.toFixed(2)}</strong> in

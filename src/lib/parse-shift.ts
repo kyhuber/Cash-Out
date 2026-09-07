@@ -109,6 +109,8 @@ TIMES — read these rules literally, they are a stated convention, not an infer
 - If they said when they started but trailed off about the end ("til close", "til whenever"), return the start and null for the end. Do not guess a closing time.
 
 MONEY
+- An explicit "no tips", "zero tips", or "$0 tips" means tips_cash = 0 and tips_card = 0, with tips_total_unsplit = null. There is nothing to split. This does not imply anything about tip_out.
+- "No cash tips" only sets tips_cash = 0; card tips remain null unless stated. Likewise for "no card tips". Unknown tips ("I don't know my tips yet") and tips not mentioned remain null, never zero.
 - tips_card: tips they said came through cards.
 - tips_cash: tips they said were cash.
 - tips_total_unsplit: a tips figure given WITHOUT saying how it split ("220 in tips", "made like 300"). Put the whole figure here and leave tips_card and tips_cash null. Do not split it yourself.
@@ -165,6 +167,14 @@ export function sanitizeParsed(
     );
   };
 
+  const tipsCash = money(parsed.tips_cash);
+  const tipsCard = money(parsed.tips_card);
+  const tipsTotal = money(parsed.tips_total_unsplit);
+  // Zero is the only total whose split is certain. Models may return "no tips"
+  // as an unsplit zero; normalize it before it reaches the confirmation card.
+  // Keep the existing preference for a specific split if the output conflicts.
+  const noTips = tipsTotal === 0 && (tipsCash ?? 0) === 0 && (tipsCard ?? 0) === 0;
+
   return {
     workplace_id: workplaceId,
     station: ifTracked("station", station(parsed.station)),
@@ -174,14 +184,14 @@ export function sanitizeParsed(
         : null,
     clock_in: time(parsed.clock_in),
     clock_out: time(parsed.clock_out),
-    tips_cash: money(parsed.tips_cash),
-    tips_card: money(parsed.tips_card),
+    tips_cash: noTips ? 0 : tipsCash,
+    tips_card: noTips ? 0 : tipsCard,
     // A split and an unsplit total are mutually exclusive by construction; if
     // the model sends both, the split is the more specific answer.
     tips_total_unsplit:
-      money(parsed.tips_cash) !== null || money(parsed.tips_card) !== null
+      noTips || tipsCash !== null || tipsCard !== null
         ? null
-        : money(parsed.tips_total_unsplit),
+        : tipsTotal,
     tip_out: ifTracked("tip_out", money(parsed.tip_out)),
     total_sales: ifTracked("total_sales", money(parsed.total_sales)),
     shift_type: ifTracked("shift_type", text(parsed.shift_type)),
