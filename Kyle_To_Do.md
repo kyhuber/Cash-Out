@@ -162,19 +162,23 @@ against an actual stub.
 
 # 📋 Later — not blocking
 
-**Which number leads the pay-period summary** — what the employer owed you
-(hours × wage + tips), or what you actually took home (after tip-out)?
-*My lean: employer-owed on top, take-home underneath.* I'll ask again when I
-build it.
-
 **Friends** — self-serve signup, or do you provision accounts?
 *My lean: self-serve.*
 
 **Repo visibility** — public right now. Fine for the code (no keys in it), but
 worth a deliberate choice before you invite anyone.
 
-**Shift history filters** — planned as "by workplace" and "by bar." Tell me if
-you want more.
+**More history filters** — filtering by employer is built. By bar, by date
+range, or a search over what you typed are all easy additions if you want them.
+
+**Tips by bar** — the data is there and the maths is written and tested
+(`byStation` ranks bars by tips *per hour*, since a long slow shift and a short
+busy one aren't comparable on totals). Nothing surfaces it yet. Worth adding
+once you've logged enough shifts for the comparison to mean anything.
+
+**Tax withholding** — you flagged this as a future phase. It changes the
+estimated-gross figure into a take-home-after-tax one, which needs filing
+status, allowances and state rules. Real scope, and worth doing properly.
 
 **Parser cost and accuracy** — Claude Opus 5 at medium effort, a deliberate
 trade: slightly less thoroughness for a faster answer, since you're standing in
