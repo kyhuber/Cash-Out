@@ -8,17 +8,44 @@ a decision is made, so the top section is always what's actually blocking.
 
 **Last updated:** September 7, 2026 — **all five MVP features are now built.**
 The home page leads with logging, then your recent shifts, with workplaces
-demoted to a settings row. Three things below, in order. **Start at step 1: the
-site won't work until the migrations are applied.**
+demoted to a settings row. **Start at step 1 — it begins with rotating your
+database password, because a fragment of it leaked into a public Actions log.**
 
 ---
 
-# 1️⃣ Get the migrations applied
+# 1️⃣ Rotate your database password, then apply the migrations
+
+## 🔴 First: rotate the password
+
+The migration workflow failed three times, and the third failure printed a
+**fragment of your database password into the Actions log**:
+
+    psql: error: invalid integer value "Qs8!vEA" for connection option "port"
+
+Your password contains characters that aren't URI-safe, so Postgres misread the
+connection string and named part of your password in the error. **Your repo is
+public, so that log is public.** GitHub masked the secret itself, but not this
+fragment, because it isn't the exact stored value.
+
+- [ ] Supabase → **Settings → Database → Database password → Reset database
+      password**. Copy the new one.
+
+This costs you nothing: the app connects with the publishable key, not this
+password. Nothing breaks when you rotate it.
+
+*The old logs can also be deleted — say the word and I'll do it — but rotating
+is what actually matters. Once the password is changed, the fragment is worth
+nothing.*
+
+**You don't need to pick a "safe" password.** The workflow no longer puts the
+password inside a URL at all, so any characters are fine now.
+
+## Then: apply the migrations
 
 **Two files need to reach your database.** Until they do, adding or editing a
 workplace fails. Pick either route.
 
-## Option A — set it up once, never paste SQL again *(recommended)*
+### Option A — set it up once, never paste SQL again *(recommended)*
 
 **a. Get the connection string**
 
@@ -29,7 +56,8 @@ at the **top of the page**. That opens a panel with three connection strings.
 
       postgresql://postgres.abcdefgh:[YOUR-PASSWORD]@aws-1-us-west-1.pooler.supabase.com:5432/postgres
 
-- [ ] Replace `[YOUR-PASSWORD]` with your database password
+- [ ] Replace `[YOUR-PASSWORD]` with your **new** password, exactly as shown —
+      no quotes, no escaping
 
 ⚠️ **Session pooler, not Direct connection.** Direct needs IPv6 (or a paid IPv4
 add-on) and GitHub's runners are IPv4-only — the direct string doesn't error, it
@@ -37,22 +65,18 @@ hangs until it times out. The session pooler is IPv4 on every plan, free
 included.
 
 ⚠️ **Not the Transaction pooler** (port `6543`) either — no prepared statements.
-*The workflow now checks which one you gave it and says so, rather than failing
-in a way you'd have to guess at.*
-
-*Password lost? **Settings → Database → Database password → Reset**. Resetting
-doesn't affect the app — it connects with the publishable key, not this one.*
+*The workflow checks which one you gave it and says so.*
 
 **b. Add it to GitHub**
 
-GitHub → your repo → **Settings → Secrets and variables → Actions** → **New
-repository secret**:
+GitHub → your repo → **Settings → Secrets and variables → Actions**. If
+`SUPABASE_DB_URL` is already there, **update** it:
 
 | Name | Value |
 |---|---|
 | `SUPABASE_DB_URL` | the connection string from above |
 
-- [ ] Added
+- [ ] Added or updated
 
 **c. Run it**
 
@@ -60,22 +84,24 @@ GitHub → **Actions** tab → **Migrate database** → **Run workflow**.
 
 - [ ] Ran it, and it went green
 
+It now tests the connection first, so if something is still wrong it says which
+part — host, user, or password — instead of failing on a migration file.
+
 From here on, a migration applies itself when I push it. Nothing for you to do.
 
 ⚠️ This gives GitHub Actions write access to your live database. Fine for a
 personal project, and only workflows in your own repo can read the secret — but
 it's a real key.
 
-## Option B — paste them by hand
+### Option B — paste them by hand
 
 Supabase → **SQL Editor** → **New query** → paste and **Run**, in order:
 
 - [ ] [`0003_pay_period_dates.sql`](https://github.com/kyhuber/Cash-Out/blob/main/supabase/migrations/0003_pay_period_dates.sql)
 - [ ] [`0004_shift_station.sql`](https://github.com/kyhuber/Cash-Out/blob/main/supabase/migrations/0004_shift_station.sql)
 
-✅ **Re-running one is safe now.** Every migration is written so a second run
-does nothing instead of failing partway. The `column "pay_period_end_date"
-already exists` error you hit was the old version — it broke nothing.
+✅ **Re-running one is safe.** Every migration is written so a second run does
+nothing instead of failing partway.
 
 ---
 

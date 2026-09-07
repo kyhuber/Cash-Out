@@ -26,7 +26,7 @@ jobs:
   migrate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install the Postgres client
         run: |
@@ -51,25 +51,95 @@ jobs:
             exit 1
           fi
 
-          case "$DATABASE_URL" in
-            *:6543/*)
-              echo "::error::That looks like the TRANSACTION pooler (port 6543)," \
-                   "which has no prepared statements. Use the Session pooler" \
-                   "string from the Connect button instead."
-              exit 1 ;;
-            *pooler.supabase.com*) : ;;
+          # Split the URL into libpq environment variables rather than handing
+          # psql a URI.
+          #
+          # A database password routinely contains characters that are not
+          # URI-safe (@ : / ? #). Inside a URI those silently reparse the
+          # string, and the failure surfaces as something that names the wrong
+          # culprit — "invalid integer value for connection option port" — while
+          # printing a fragment of the password into the log, which on a public
+          # repository is a public log. PGPASSWORD has no such syntax, so
+          # nothing needs escaping and nothing can be misread.
+          python3 - > /tmp/pgenv.sh <<'PY'
+          import os, re, shlex, sys
+
+          def fail(msg):
+              print(f"echo '::error::{msg}'; exit 1")
+              sys.exit(0)
+
+          raw = os.environ["DATABASE_URL"].strip()
+          m = re.match(r"^postgres(?:ql)?://(.*)$", raw, re.I)
+          if not m:
+              fail("SUPABASE_DB_URL must start with postgresql:// — copy it from "
+                   "the Connect button at the top of your Supabase project page.")
+
+          # rpartition, so an @ inside the password goes to the password rather
+          # than being mistaken for the separator before the host.
+          userinfo, at, hostpart = m.group(1).rpartition("@")
+          if not at:
+              fail("SUPABASE_DB_URL has no user@host separator.")
+
+          # partition, so a : inside the password stays in the password.
+          user, _, password = userinfo.partition(":")
+
+          hostport, _, dbrest = hostpart.partition("/")
+          dbname = (dbrest.split("?", 1)[0] or "postgres")
+          host, colon, port = hostport.rpartition(":")
+          if not colon:
+              host, port = hostport, "5432"
+          if not port.isdigit():
+              fail("Could not read a port from SUPABASE_DB_URL. Re-copy the "
+                   "Session pooler string and replace only [YOUR-PASSWORD].")
+          if not host:
+              fail("Could not read a host from SUPABASE_DB_URL.")
+
+          for k, v in [
+              ("PGHOST", host), ("PGPORT", port), ("PGUSER", user),
+              ("PGPASSWORD", password), ("PGDATABASE", dbname),
+              ("PGSSLMODE", "require"), ("PGCONNECT_TIMEOUT", "15"),
+          ]:
+              print(f"export {k}={shlex.quote(v)}")
+          PY
+
+          source /tmp/pgenv.sh
+          rm -f /tmp/pgenv.sh
+          # The encoded/extracted password is not the literal secret string, so
+          # GitHub would not mask it on its own.
+          echo "::add-mask::$PGPASSWORD"
+
+          if [ "$PGPORT" = "6543" ]; then
+            echo "::error::That is the TRANSACTION pooler (port 6543), which has" \
+                 "no prepared statements. Use the Session pooler string instead."
+            exit 1
+          fi
+
+          case "$PGHOST" in
+            *pooler.supabase.com) : ;;
             *)
-              echo "::warning::Host does not look like a Supavisor pooler." \
-                   "A direct connection needs IPv6 and will hang on an IPv4-only" \
-                   "runner. Use the Session pooler string if this job times out." ;;
+              echo "::warning::$PGHOST does not look like a Supavisor pooler." \
+                   "A direct connection needs IPv6 and will hang on an" \
+                   "IPv4-only runner. Use the Session pooler string if this" \
+                   "job times out." ;;
           esac
+
+          # One connection check first, so a credentials or networking problem
+          # is reported as itself instead of as a failure of the first
+          # migration file that happens to run.
+          if ! psql -qtAc 'select 1' >/dev/null; then
+            echo "::error::Could not connect to $PGHOST:$PGPORT as $PGUSER." \
+                 "Check the password in SUPABASE_DB_URL, and that it is the" \
+                 "Session pooler string."
+            exit 1
+          fi
+          echo "==> connected to $PGHOST:$PGPORT as $PGUSER"
 
           shopt -s nullglob
           for f in supabase/migrations/*.sql; do
             echo "==> $(basename "$f")"
             # ON_ERROR_STOP so a failure stops here instead of racing on and
             # leaving later migrations applied over a broken one.
-            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 --single-transaction -q -f "$f"
+            psql -v ON_ERROR_STOP=1 --single-transaction -q -f "$f"
           done
 
           echo "==> all migrations applied"
