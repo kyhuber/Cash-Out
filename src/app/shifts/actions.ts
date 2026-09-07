@@ -151,20 +151,20 @@ export async function parseShift(
   }
 }
 
-/** Step two: save what the user confirmed on the card. */
-export async function createShift(
-  _prev: SaveState,
-  formData: FormData,
-): Promise<SaveState> {
-  const { supabase, user, workplaces, loadError } = await currentUserWorkplaces();
-  if (loadError) return { formError: `Couldn't load your workplaces: ${loadError}` };
+type WorkplaceRow = {
+  id: string;
+  name: string;
+  hourly_wage: number;
+  overtime_enabled: boolean;
+  overtime_multiplier: number | null;
+  optional_fields: string[] | null;
+};
 
-  const workplaceId = String(formData.get("workplace_id") ?? "");
-  const workplace = workplaces.find((w) => w.id === workplaceId);
-  if (!workplace) {
-    return { errors: { workplace_id: "Pick which job this was" } };
-  }
-
+/**
+ * Reads the shift form. Shared by create and update so the two can never
+ * disagree about which fields a workplace tracks or how a blank is read.
+ */
+function readShiftForm(formData: FormData, workplace: WorkplaceRow) {
   const enabled = (workplace.optional_fields ?? []) as OptionalFieldKey[];
 
   const jsonValues: Record<string, string | number | null> = {};
@@ -178,8 +178,8 @@ export async function createShift(
         : String(raw);
   }
 
-  const parsed = shiftSchema.safeParse({
-    workplace_id: workplaceId,
+  return shiftSchema.safeParse({
+    workplace_id: workplace.id,
     station: enabled.includes("station")
       ? String(formData.get("station") ?? "")
       : null,
@@ -194,7 +194,23 @@ export async function createShift(
     optional_field_values: pickTrackedFields(jsonValues, enabled),
     raw_input_text: String(formData.get("raw_input_text") ?? "") || null,
   });
+}
 
+/** Step two: save what the user confirmed on the card. */
+export async function createShift(
+  _prev: SaveState,
+  formData: FormData,
+): Promise<SaveState> {
+  const { supabase, user, workplaces, loadError } = await currentUserWorkplaces();
+  if (loadError) return { formError: `Couldn't load your workplaces: ${loadError}` };
+
+  const workplaceId = String(formData.get("workplace_id") ?? "");
+  const workplace = workplaces.find((w) => w.id === workplaceId);
+  if (!workplace) {
+    return { errors: { workplace_id: "Pick which job this was" } };
+  }
+
+  const parsed = readShiftForm(formData, workplace);
   if (!parsed.success) return { errors: fieldErrors(parsed.error.issues) };
 
   const { error } = await supabase.from("shifts").insert({
@@ -223,4 +239,78 @@ export async function createShift(
       tips_total: parsed.data.tips_cash + parsed.data.tips_card,
     },
   };
+}
+
+/** Edits an already-saved shift. */
+export async function updateShift(
+  _prev: SaveState,
+  formData: FormData,
+): Promise<SaveState> {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { formError: "Missing shift id" };
+
+  const { supabase, user, workplaces, loadError } = await currentUserWorkplaces();
+  if (loadError) return { formError: `Couldn't load your workplaces: ${loadError}` };
+
+  const workplaceId = String(formData.get("workplace_id") ?? "");
+  const workplace = workplaces.find((w) => w.id === workplaceId);
+  if (!workplace) {
+    return { errors: { workplace_id: "Pick which job this was" } };
+  }
+
+  const parsed = readShiftForm(formData, workplace);
+  if (!parsed.success) return { errors: fieldErrors(parsed.error.issues) };
+
+  // hourly_wage_at_time is deliberately NOT rewritten. It is what this shift
+  // was worth when it was worked; a raise since then must not reach backwards.
+  // Moving a shift to a different workplace is the one case that has to change
+  // it, since the old job's wage is meaningless at the new one.
+  const { data: existing } = await supabase
+    .from("shifts")
+    .select("workplace_id")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!existing) return { formError: "That shift no longer exists." };
+
+  const movedJobs = existing.workplace_id !== workplace.id;
+
+  const { error } = await supabase
+    .from("shifts")
+    .update({
+      ...parsed.data,
+      ...(movedJobs
+        ? {
+            hourly_wage_at_time: workplace.hourly_wage,
+            overtime_multiplier_at_time: workplace.overtime_enabled
+              ? workplace.overtime_multiplier
+              : null,
+          }
+        : {}),
+    })
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (error) return { formError: error.message };
+
+  revalidatePath("/");
+  redirect("/");
+}
+
+/** Deletes a shift. The confirm step lives in the UI. */
+export async function deleteShift(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/sign-in");
+
+  await supabase.from("shifts").delete().eq("id", id).eq("user_id", user.id);
+
+  revalidatePath("/");
+  redirect("/");
 }

@@ -54,7 +54,17 @@ Read `Cash_Out_PRD.md` first — it's the full spec. This file is for the invari
   server-side date resolves "last night" to the wrong day and can file a shift
   into the wrong pay period.
 - `hourly_wage_at_time` and `overtime_multiplier_at_time` are snapshotted
-  server-side from the workplace row. Never accept them from a form.
+  server-side from the workplace row. Never accept them from a form. Editing a
+  shift must NOT rewrite them — the exception is moving a shift to a different
+  workplace, where the old job's wage is meaningless.
+- The pay-period summary's headline number is what the EMPLOYER OWES:
+  hours x wage + tips, with tip-out subtracted only for take-home. Overtime is
+  deliberately not applied (the multiplier is captured but weekly-threshold
+  aggregation is backlog), and neither is tax withholding. A half-implemented
+  version of either produces a number that looks authoritative and isn't.
+- The home page order is logger, then shifts, then workplaces. Workplaces are
+  configuration touched twice a year; giving them a prominent tap target that
+  opens a form promises content and delivers settings.
 - `src/lib/pay-period.ts` and the `minutes_worked` generated column in
   `supabase/migrations/0001_initial_schema.sql` implement the same rule. Change
   them together; `scripts/test-db.sh` and the unit tests both check it.

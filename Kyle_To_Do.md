@@ -6,10 +6,10 @@ keys, pay stubs) and decisions only you can make.
 Claude maintains this file. It gets rewritten whenever an action is completed or
 a decision is made, so the top section is always what's actually blocking.
 
-**Last updated:** September 3, 2026 — all five MVP features are now either built
-or next; shift logging is live but has never made a real parse call. Three
-things below, in order. **Start at step 1: the site won't work until the
-migrations are applied.**
+**Last updated:** September 7, 2026 — **all five MVP features are now built.**
+The home page leads with logging, then your recent shifts, with workplaces
+demoted to a settings row. Three things below, in order. **Start at step 1: the
+site won't work until the migrations are applied.**
 
 ---
 
@@ -131,23 +131,32 @@ Worth deliberately trying across your first several:
 | 1. Multi-user auth | ✅ Built |
 | 2. Workplace setup | ✅ Built |
 | 3. Conversational shift logging | ✅ Built — **never run live** |
-| 4. Shift history | 🔨 Next |
-| 5. Pay-period summary | ⬜ |
+| 4. Shift history | ✅ Built |
+| 5. Pay-period summary | ✅ Built |
 
-**What I build next: shift history** — the list of what you've logged, and the
-ability to edit or delete any of it.
+**The home page is now ordered the way you use it:** the text box, then your
+recent shifts, then workplaces. Workplaces used to be big tappable cards that
+opened a settings form — a lot of visual weight promising content and
+delivering a form you'll touch twice a year. They're now a quiet row with a
+live summary and an explicit **Edit** link.
 
-Your own example bumped this up the list. *"I expect I earned some tips, maybe
-$50"* told me you often don't know your card tips when you walk out. That makes
-"log it now, fix the number in two days" a normal workflow rather than an edge
-case — and right now there's no way to go back and fix anything.
+**Recent shifts** lists what you've logged newest-first, with a chip to filter
+by employer. Tap any shift to correct it or delete it. That closes the gap your
+own example opened: *"I expect I earned some tips, maybe $50"* — you can log a
+guess now and fix the number when the card tips post.
 
-**Then the pay-period summary**, which is the point of the whole thing: hours,
-tips and estimated gross for a period, to hold against a real pay stub.
+**Each workplace shows its current pay period**: dates, hours, tips, and
+estimated gross at `hours × wage + tips`. That's the number to hold against a
+pay stub. Tip-out is tracked separately so it never inflates what the employer
+owes you.
 
-**What's left from you after that:** logging real shifts for two or three weeks
-and telling me every time the parser trips. That's the only way it gets good,
-and it's also when you first check a summary against an actual stub.
+*Tax withholding is deliberately not in that number, and neither is overtime.
+Both are a later phase — a half-built version of either produces a figure that
+looks authoritative and isn't, which is the one thing this app can't do.*
+
+**What's left is the part nobody can shortcut:** logging real shifts for two or
+three weeks, telling me every time the parser trips, and holding a summary
+against an actual stub.
 
 ---
 
@@ -218,6 +227,11 @@ Kept so we don't relitigate them. Say the word if you want any reopened.
 | Times with no am/pm | Always PM. A morning start is always written "am", and an "am" end after an afternoon start is past midnight | Sep 3 |
 | Parser model | Claude Opus 5, adaptive thinking, medium effort — latency matters more than the last few points of accuracy when a card catches errors | Sep 3 |
 | Applying migrations | Every migration is idempotent, and CI applies all of them on every push. No migration-state table to drift or repair | Sep 3 |
+| Home page order | Logger, then recent shifts, then workplaces. Configuration goes last | Sep 7 |
+| Workplace rows | Demoted to a quiet row with a live period summary and an explicit Edit link, rather than a card that opens a form | Sep 7 |
+| Per-workplace views | Handled by filtering the shift list, not a separate workplace detail page | Sep 7 |
+| Summary headline number | What the employer owes: hours × wage + tips. Tip-out subtracted only for take-home | Sep 7 |
+| Tax withholding and overtime | Excluded from the estimate on purpose. A partial version looks authoritative and isn't. Later phase | Sep 7 |
 
 ---
 
@@ -235,6 +249,11 @@ Kept so we don't relitigate them. Say the word if you want any reopened.
   shift. Anything unsaid stays an empty box; the raw sentence is kept for
   tuning; the card shows hours so a misread am/pm is visible.
 - **Bar / lounge per shift**, with spellings snapped to what's already recorded.
+- **Shift history:** recent shifts newest-first, filterable by employer, each
+  tappable to edit or delete. Editing never rewrites the wage a shift was
+  worked at.
+- **Pay-period summary** per workplace: period dates, hours, tips and estimated
+  gross, computed from the browser's date so it can't land in the wrong period.
 - **Migrations:** all idempotent, applied by CI, and the test suite applies every
   one twice to prove a re-run is a no-op.
 - **PWA shell:** manifest, icons, iOS home-screen support.
