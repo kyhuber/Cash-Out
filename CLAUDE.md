@@ -98,7 +98,26 @@ trusted.
 
 ## Scope discipline
 
-MVP is Section 5 of the PRD. Backlog items (Section 9) — automated paycheck reconciliation, real overtime math, dashboards, exports, notifications, tip-out splitting, App Store distribution — are out of scope unless explicitly asked for.
+Kyle's framing, and the one to test every change against: **this app logs shift
+data, keeps that data available to look at, and calculates what a paycheck
+should look like.** Nothing else.
+
+That rules out analytics, trends, projections, rankings, comparisons, charts,
+and "which shift earns most" — however cheap they look, and even when the data
+is already sitting there. `byStation` was written, tested, wired to nothing, and
+deleted for exactly this reason. It was not the code that was wrong, it was
+building it at all.
+
+The specific failure to avoid: writing something unused now because it seems
+like useful groundwork later. Do not add a field, helper, index or export that
+nothing on screen depends on. If a feature is genuinely next, it will be asked
+for, and it is cheap to write then.
+
+MVP is Section 5 of the PRD. Backlog items (Section 9) — automated paycheck
+reconciliation, real overtime math, dashboards, exports, notifications, tip-out
+splitting, App Store distribution — are out of scope unless explicitly asked
+for. Tax withholding is Kyle's own stated later phase, and the estimate stays
+`hours x wage + tips` until then.
 
 ## Build/run commands
 

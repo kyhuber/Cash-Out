@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { byStation, periodSummary, shiftsInPeriod, type ShiftRow } from "./shift-summary";
+import { periodSummary, shiftsInPeriod, type ShiftRow } from "./shift-summary";
 
 const shift = (over: Partial<ShiftRow>): ShiftRow => ({
   id: "s1",
@@ -55,17 +55,15 @@ describe("periodSummary", () => {
     expect(s.gross).toBe(540);
   });
 
-  it("subtracts tip-out for take-home but never from gross", () => {
-    // Gross is what the employer owes and is the number checked against a pay
-    // stub; tipping out happens after and must not reduce it.
+  it("never lets tip-out reduce what the employer owes", () => {
+    // Gross is the number checked against a pay stub; tipping out happens
+    // afterwards, out of pocket, and never appears on the paycheck.
     const s = periodSummary(
       [shift({ minutes_worked: 600, tips_card: 300, tip_out: 50 })],
       biweekly,
       "2026-09-07",
     );
     expect(s.gross).toBe(500);
-    expect(s.takeHome).toBe(450);
-    expect(s.tipOut).toBe(50);
   });
 
   it("values each shift at the wage it was worked at, not the current one", () => {
@@ -113,31 +111,5 @@ describe("periodSummary", () => {
     );
     expect(s.period).toEqual({ start: "2026-09-16", end: "2026-09-30" });
     expect(s.gross).toBe(30);
-  });
-});
-
-describe("byStation", () => {
-  it("ranks bars by tips per hour, not by total", () => {
-    // A long slow shift and a short busy one are not comparable on totals.
-    const ranked = byStation([
-      shift({ id: "a", station: "Bar 309", minutes_worked: 600, tips_card: 300 }),
-      shift({ id: "b", station: "Moët Lounge", minutes_worked: 180, tips_card: 240 }),
-    ]);
-    expect(ranked.map((r) => r.station)).toEqual(["Moët Lounge", "Bar 309"]);
-    expect(ranked[0].tipsPerHour).toBe(80);
-    expect(ranked[1].tipsPerHour).toBe(30);
-  });
-
-  it("groups repeat visits to one bar", () => {
-    const ranked = byStation([
-      shift({ id: "a", station: "Bar 309", minutes_worked: 300, tips_card: 100 }),
-      shift({ id: "b", station: "Bar 309", minutes_worked: 300, tips_card: 200 }),
-    ]);
-    expect(ranked).toHaveLength(1);
-    expect(ranked[0]).toMatchObject({ shifts: 2, hours: 10, tips: 300 });
-  });
-
-  it("skips shifts with no station", () => {
-    expect(byStation([shift({ station: null })])).toEqual([]);
   });
 });

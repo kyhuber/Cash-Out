@@ -26,19 +26,18 @@ export type PeriodSummary = {
   shifts: number;
   hours: number;
   tips: number;
-  tipOut: number;
   /**
    * What the employer owes: hours x wage + tips. This is the number to hold
-   * against a pay stub, which is the whole point of the app, so it leads.
+   * against a pay stub, which is the whole point of the app.
    *
    * Overtime is deliberately NOT applied. The multiplier is captured per
-   * workplace but real weekly-threshold aggregation is a backlog item, and a
+   * workplace but real weekly-threshold aggregation is out of scope, and a
    * half-implemented one would produce a number that looks authoritative and
-   * isn't. Tax withholding is a later phase for the same reason.
+   * isn't. Tax withholding is excluded for the same reason. Take-home after
+   * tip-out is not computed here either: tip_out is stored per shift and
+   * editable, but a paycheck does not show it, and this is the paycheck figure.
    */
   gross: number;
-  /** What actually came home: gross less what was tipped out. */
-  takeHome: number;
 };
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -83,55 +82,19 @@ export function periodSummary(
 
   let minutes = 0;
   let tips = 0;
-  let tipOut = 0;
   let wages = 0;
 
   for (const s of mine) {
     minutes += s.minutes_worked;
     tips += s.tips_cash + s.tips_card;
-    tipOut += s.tip_out;
     wages += (s.minutes_worked / 60) * s.hourly_wage_at_time;
   }
-
-  const gross = wages + tips;
 
   return {
     period,
     shifts: mine.length,
     hours: minutesToHours(minutes),
     tips: round2(tips),
-    tipOut: round2(tipOut),
-    gross: round2(gross),
-    takeHome: round2(gross - tipOut),
+    gross: round2(wages + tips),
   };
-}
-
-/** Totals per station, for comparing which bar actually tips better. */
-export function byStation(
-  shifts: ShiftRow[],
-): { station: string; shifts: number; hours: number; tips: number; tipsPerHour: number }[] {
-  const groups = new Map<string, ShiftRow[]>();
-  for (const s of shifts) {
-    if (!s.station) continue;
-    const list = groups.get(s.station) ?? [];
-    list.push(s);
-    groups.set(s.station, list);
-  }
-
-  return [...groups.entries()]
-    .map(([station, rows]) => {
-      const minutes = rows.reduce((n, s) => n + s.minutes_worked, 0);
-      const tips = rows.reduce((n, s) => n + s.tips_cash + s.tips_card, 0);
-      const hours = minutesToHours(minutes);
-      return {
-        station,
-        shifts: rows.length,
-        hours,
-        tips: round2(tips),
-        // The comparison that matters: a long slow shift and a short busy one
-        // aren't comparable on total tips alone.
-        tipsPerHour: hours > 0 ? round2(tips / hours) : 0,
-      };
-    })
-    .sort((a, b) => b.tipsPerHour - a.tipsPerHour);
 }

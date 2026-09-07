@@ -47,11 +47,11 @@ function weekdayOf(date: DateOnly): string {
 /**
  * The system prompt.
  *
- * Kept pure and exported so it can be tested and, more importantly, read. This
- * is the part of the app most likely to need tuning against how someone
- * actually talks, and it should be obvious what it currently promises.
+ * Kept as one pure function so it is readable in one piece. This is the part of
+ * the app most likely to need tuning against how someone actually talks, and it
+ * should be obvious what it currently promises.
  */
-export function buildParsePrompt(
+function buildParsePrompt(
   workplaces: ParserWorkplace[],
   today: DateOnly,
 ): string {

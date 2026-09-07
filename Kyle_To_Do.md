@@ -168,17 +168,9 @@ against an actual stub.
 **Repo visibility** — public right now. Fine for the code (no keys in it), but
 worth a deliberate choice before you invite anyone.
 
-**More history filters** — filtering by employer is built. By bar, by date
-range, or a search over what you typed are all easy additions if you want them.
-
-**Tips by bar** — the data is there and the maths is written and tested
-(`byStation` ranks bars by tips *per hour*, since a long slow shift and a short
-busy one aren't comparable on totals). Nothing surfaces it yet. Worth adding
-once you've logged enough shifts for the comparison to mean anything.
-
-**Tax withholding** — you flagged this as a future phase. It changes the
-estimated-gross figure into a take-home-after-tax one, which needs filing
-status, allowances and state rules. Real scope, and worth doing properly.
+**Tax withholding** — your stated later phase. It turns the estimated-gross
+figure into a take-home-after-tax one, which needs filing status, allowances and
+state rules. Real scope, worth doing properly, and not started.
 
 **Parser cost and accuracy** — Claude Opus 5 at medium effort, a deliberate
 trade: slightly less thoroughness for a faster answer, since you're standing in
@@ -236,6 +228,7 @@ Kept so we don't relitigate them. Say the word if you want any reopened.
 | Per-workplace views | Handled by filtering the shift list, not a separate workplace detail page | Sep 7 |
 | Summary headline number | What the employer owes: hours × wage + tips. Tip-out subtracted only for take-home | Sep 7 |
 | Tax withholding and overtime | Excluded from the estimate on purpose. A partial version looks authoritative and isn't. Later phase | Sep 7 |
+| Scope | Log shift data, keep it available to look at, calculate what a paycheck should look like. No analytics, trends, projections or comparisons — and nothing built speculatively for later | Sep 7 |
 
 ---
 
@@ -257,7 +250,8 @@ Kept so we don't relitigate them. Say the word if you want any reopened.
   tappable to edit or delete. Editing never rewrites the wage a shift was
   worked at.
 - **Pay-period summary** per workplace: period dates, hours, tips and estimated
-  gross, computed from the browser's date so it can't land in the wrong period.
+  gross at `hours × wage + tips`, computed from the browser's date so it can't
+  land in the wrong period.
 - **Migrations:** all idempotent, applied by CI, and the test suite applies every
   one twice to prove a re-run is a no-op.
 - **PWA shell:** manifest, icons, iOS home-screen support.

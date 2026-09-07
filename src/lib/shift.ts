@@ -110,7 +110,7 @@ export type ShiftInput = z.infer<typeof shiftSchema>;
  * them: the summary subtracts tip-out to show take-home, and station exists
  * precisely so tips can be compared between bars.
  */
-export const COLUMN_BACKED_FIELDS: readonly OptionalFieldKey[] = [
+const COLUMN_BACKED_FIELDS: readonly OptionalFieldKey[] = [
   "tip_out",
   "station",
 ];

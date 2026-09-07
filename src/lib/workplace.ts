@@ -48,11 +48,6 @@ export const PAY_PERIOD_TYPES = [
   { value: "monthly", label: "Monthly", paychecksPerYear: 12 },
 ] as const;
 
-/** Human-readable name for a pay period type. */
-export function payPeriodLabel(type: PayPeriodType): string {
-  return PAY_PERIOD_TYPES.find((t) => t.value === type)?.label ?? type;
-}
-
 /** e.g. "Every two weeks — 26 paychecks a year". */
 export function payPeriodDescription(type: PayPeriodType): string {
   const found = PAY_PERIOD_TYPES.find((t) => t.value === type);
