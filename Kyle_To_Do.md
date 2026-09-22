@@ -6,157 +6,54 @@ keys, pay stubs) and decisions only you can make.
 Claude maintains this file. It gets rewritten whenever an action is completed or
 a decision is made, so the top section is always what's actually blocking.
 
-**Last updated:** September 7, 2026 — **all five MVP features are now built.**
-The home page leads with logging, then your recent shifts, with workplaces
-demoted to a settings row. **Start at step 1 — it begins with rotating your
-database password, because a fragment of it leaked into a public Actions log.**
+**Last updated:** September 22, 2026 — **the live site is down.** Not a bug —
+Supabase paused your database for inactivity. One dashboard click fixes it, and
+it's the only thing in this file that needs you before anything else. Everything
+below that is either already fixed or a decision, not a blocker.
 
 ---
 
-# 1️⃣ Rotate your database password, then apply the migrations
+# 🔴 1️⃣ Restore the database — the site is down until you do this
 
-## 🔴 First: rotate the password
+Supabase pauses a free project after **7 days with no database activity**. It
+looks like nobody worked a shift (or opened the app) for that long a stretch,
+and it paused. **Your data is untouched** — pausing stops the database from
+running, it doesn't delete anything — but nothing will load until it's
+un-paused, and only you can do that; I only hold a database credential, not
+dashboard access.
 
-The migration workflow failed three times, and the third failure printed a
-**fragment of your database password into the Actions log**:
+- [ ] Log in at [supabase.com/dashboard](https://supabase.com/dashboard)
+- [ ] Open the Cash Out project — it'll be marked **Paused**
+- [ ] Click **Restore project**
 
-    psql: error: invalid integer value "Qs8!vEA" for connection option "port"
+Takes a minute or two. The app should load again right after.
 
-Your password contains characters that aren't URI-safe, so Postgres misread the
-connection string and named part of your password in the error. **Your repo is
-public, so that log is public.** GitHub masked the secret itself, but not this
-fragment, because it isn't the exact stored value.
+**I've already fixed the reason it'll recur.** `.github/workflows/migrate.yml`
+now runs on a schedule (Monday and Thursday) as well as on push — it does a
+real authenticated query against the database each time, which is exactly what
+Supabase counts as activity. As long as that keeps running, the project should
+never sit idle long enough to pause again, whether or not you're actively
+logging shifts that week.
 
-- [ ] Supabase → **Settings → Database → Database password → Reset database
-      password**. Copy the new one.
-
-This costs you nothing: the app connects with the publishable key, not this
-password. Nothing breaks when you rotate it.
-
-*The old logs can also be deleted — say the word and I'll do it — but rotating
-is what actually matters. Once the password is changed, the fragment is worth
-nothing.*
-
-**You don't need to pick a "safe" password.** The workflow no longer puts the
-password inside a URL at all, so any characters are fine now.
-
-## Then: apply the migrations
-
-**Two files need to reach your database.** Until they do, adding or editing a
-workplace fails. Pick either route.
-
-### Option A — set it up once, never paste SQL again *(recommended)*
-
-**a. Get the connection string**
-
-It is **not** under Settings. Open your project and click the **Connect** button
-at the **top of the page**. That opens a panel with three connection strings.
-
-- [ ] Take the **Session pooler** one — the host contains `pooler`:
-
-      postgresql://postgres.abcdefgh:[YOUR-PASSWORD]@aws-1-us-west-1.pooler.supabase.com:5432/postgres
-
-- [ ] Replace `[YOUR-PASSWORD]` with your **new** password, exactly as shown —
-      no quotes, no escaping
-
-⚠️ **Session pooler, not Direct connection.** Direct needs IPv6 (or a paid IPv4
-add-on) and GitHub's runners are IPv4-only — the direct string doesn't error, it
-hangs until it times out. The session pooler is IPv4 on every plan, free
-included.
-
-⚠️ **Not the Transaction pooler** (port `6543`) either — no prepared statements.
-*The workflow checks which one you gave it and says so.*
-
-**b. Add it to GitHub**
-
-GitHub → your repo → **Settings → Secrets and variables → Actions**. If
-`SUPABASE_DB_URL` is already there, **update** it:
-
-| Name | Value |
-|---|---|
-| `SUPABASE_DB_URL` | the connection string from above |
-
-- [ ] Added or updated
-
-**c. Run it**
-
-GitHub → **Actions** tab → **Migrate database** → **Run workflow**.
-
-- [ ] Ran it, and it went green
-
-It now tests the connection first, so if something is still wrong it says which
-part — host, user, or password — instead of failing on a migration file.
-
-From here on, a migration applies itself when I push it. Nothing for you to do.
-
-⚠️ This gives GitHub Actions write access to your live database. Fine for a
-personal project, and only workflows in your own repo can read the secret — but
-it's a real key.
-
-### Option B — paste them by hand
-
-Supabase → **SQL Editor** → **New query** → paste and **Run**, in order:
-
-- [ ] [`0003_pay_period_dates.sql`](https://github.com/kyhuber/Cash-Out/blob/main/supabase/migrations/0003_pay_period_dates.sql)
-- [ ] [`0004_shift_station.sql`](https://github.com/kyhuber/Cash-Out/blob/main/supabase/migrations/0004_shift_station.sql)
-
-✅ **Re-running one is safe.** Every migration is written so a second run does
-nothing instead of failing partway.
+*One nuance worth knowing: the scheduled run can't fire while the project is
+already paused (nothing to connect to), so this prevents the **next** pause —
+it doesn't undo the current one. Only the dashboard click does that.*
 
 ---
 
-# 2️⃣ Update your two workplaces
+# 2️⃣ One open question — Supabase, or somewhere else
 
-Once the migrations are in, open each workplace and:
-
-- [ ] **Fill in the two new date fields** — last day of the pay period, and the
-      date you got paid for it. You only have a start date stored; the form
-      guesses the end from the schedule, but only your stub knows the pay date.
-- [ ] **Tick "Bar or lounge"** under *What does this job report?* — for both
-      venues. It's off by default, so nothing asks for a bar until you turn it
-      on.
-
-While you're there, check the line that says *"That's every two weeks — 26
-paychecks a year"* matches reality. If it doesn't, one of the dates is wrong.
-
----
-
-# 3️⃣ Log one real shift, and tell me what happened
-
-**This is the highest-value thing you can do, and it replaces the homework I
-asked you for.**
-
-Every shift you log stores the exact sentence you typed. So you don't need to
-sit down and invent examples — just use the app after your next shift and tell
-me anything it got wrong.
-
-- [ ] Log a shift the way you'd actually describe it
-- [ ] If anything comes back wrong, paste me **what you typed** and **what the
-      card showed**
-
-⚠️ **Nothing has ever gone through the parser.** There's no Anthropic key in my
-build environment, so I could not make a single live call. Everything around it
-is tested — schema, sanitising, date maths, what the database accepts — but the
-first sentence you type is genuinely the first one. **If it errors, paste me the
-message.** It's written to say what's wrong in plain language.
-
-Worth deliberately trying across your first several:
-
-- A shift where you **don't know your tips yet**
-- One where you **correct yourself** mid-sentence
-- One where you **don't say which venue** — it should ask, not guess
-- One at **each bar or lounge** you work
-- Something **that isn't a shift at all**, to see it decline rather than invent
-
----
-
-# 🏁 Where this stands
+Separate from the outage: I asked you directly, in chat, whether to stay on
+Supabase (with the fix above) or move to something with no free-tier traffic
+minimum at all, like Firebase. That's a real fork — one is free and roughly a
+day of work, the other is free and roughly a full rewrite of the backend — so
+I'm not deciding it here. See my message for the actual tradeoff.
 
 | MVP feature | State |
 |---|---|
 | 1. Multi-user auth | ✅ Built |
 | 2. Workplace setup | ✅ Built |
-| 3. Conversational shift logging | ✅ Built — **never run live** |
+| 3. Conversational shift logging | ✅ Built and confirmed working live |
 | 4. Shift history | ✅ Built |
 | 5. Pay-period summary | ✅ Built |
 
@@ -267,6 +164,8 @@ Kept so we don't relitigate them. Say the word if you want any reopened.
 | Headline of the app | The next paycheck per job, above the logger. Not the period containing today — those differ for several days each cycle | Sep 7 |
 | Pay date rule | The first Friday strictly after a period ends. No holiday or weekend shifting for now | Sep 7 |
 | Open vs closed periods | An open period's figure is labelled "so far" and never extrapolated to what the finished period might total | Sep 7 |
+| Database password | Rotated after a fragment leaked into a public Actions log; migrations now connect via env vars instead of a URL so this class of leak can't recur | Sep 7 |
+| Keeping the free database awake | The migration workflow now also runs Mon/Thu on a schedule — a real query twice a week, comfortably inside Supabase's 7-day pause window | Sep 22 |
 
 ---
 
@@ -274,7 +173,8 @@ Kept so we don't relitigate them. Say the word if you want any reopened.
 
 - **Live and working:** Supabase project, Vercel deployment, environment
   variables, custom SMTP through Gmail, both email templates emitting a code,
-  Anthropic API key with credit on the account.
+  Anthropic API key with credit on the account. Both workplaces set up with
+  real wage and pay-period details; migrations applied.
 - **Auth:** email-code sign-in, confirmed working.
 - **Data:** schema with row-level security, tested against cross-user reads,
   writes and deletes, plus constraints tested against bad input.

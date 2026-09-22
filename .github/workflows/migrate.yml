@@ -6,6 +6,16 @@
 # them in order on every run rather than tracking which have already been
 # applied. There is no migration state to drift, get corrupted, or repair — a
 # re-run is simply a no-op.
+#
+# The schedule below exists for an unrelated reason: Supabase pauses a free
+# project after 7 days with no database activity (data isn't lost, but the
+# app goes down until someone restores it from the dashboard — see
+# https://supabase.com/docs/guides/platform/free-project-pausing). Twice a
+# week is comfortably inside that window even if a run is skipped once. This
+# workflow already does a real authenticated query every time it runs — the
+# `select 1` connectivity check, then the migrations themselves — so reusing
+# it is simpler than standing up a second workflow that duplicates the same
+# credential-parsing logic just to poke the database.
 name: Migrate database
 
 on:
@@ -16,6 +26,10 @@ on:
       - ".github/workflows/migrate.yml"
   # Lets you re-apply from the Actions tab without pushing anything.
   workflow_dispatch:
+  # Keeps the free Supabase project from auto-pausing for inactivity. Monday
+  # and Thursday, so the gap between runs is never more than 4 days.
+  schedule:
+    - cron: "0 14 * * 1,4"
 
 # Two runs applying migrations at once would interleave DDL on one database.
 concurrency:

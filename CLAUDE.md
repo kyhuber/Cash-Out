@@ -156,6 +156,15 @@ every file in order on any push that touches `supabase/migrations/`. It tracks
 no state precisely because they are idempotent — a re-run is a no-op, so there
 is no migration table to drift or repair.
 
+That workflow ALSO runs on a `schedule` (Mon/Thu) for an unrelated reason:
+free-tier Supabase pauses a project after 7 days with no database activity
+(https://supabase.com/docs/guides/platform/free-project-pausing). This
+already happened once (Sep 2026) — the fix requires the project owner to click
+Restore in the Supabase dashboard, which nothing in this codebase can do, so
+don't try to route around it with a database call. The schedule trigger only
+prevents the *next* pause, since a paused project can't be reached to un-pause
+itself. If the scheduled runs are ever removed, the pause risk comes back.
+
 Note: Next 16 renamed Middleware to Proxy. Session refresh lives in
 `src/proxy.ts`, and it is NOT an authorization boundary — pages check the
 session themselves and RLS is what actually protects the data.
