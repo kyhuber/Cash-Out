@@ -6,38 +6,38 @@ keys, pay stubs) and decisions only you can make.
 Claude maintains this file. It gets rewritten whenever an action is completed or
 a decision is made, so the top section is always what's actually blocking.
 
-**Last updated:** September 22, 2026 — **the live site is down.** Not a bug —
-Supabase paused your database for inactivity. One dashboard click fixes it, and
-it's the only thing in this file that needs you before anything else. Everything
-below that is either already fixed or a decision, not a blocker.
+**Last updated:** September 22, 2026 — **the outage is resolved.** You restored
+the project and I confirmed the database is reachable again (the migration
+workflow connected and ran clean). Nothing in this file is currently blocking —
+what's below is one unanswered question from me and one open question from you.
 
 ---
 
-# 🔴 1️⃣ Restore the database — the site is down until you do this
+# One thing I'm still waiting on you for
 
-Supabase pauses a free project after **7 days with no database activity**. It
-looks like nobody worked a shift (or opened the app) for that long a stretch,
-and it paused. **Your data is untouched** — pausing stops the database from
-running, it doesn't delete anything — but nothing will load until it's
-un-paused, and only you can do that; I only hold a database credential, not
-dashboard access.
+A couple of messages back I asked what you wanted for a tax estimate on the
+paycheck card (gross + net, using the effective rate off a real stub) and laid
+out three questions: whether your employer's reported gross includes cash
+tips, which stub to calibrate from, and which number should lead. That's still
+open — no rush, just flagging it so it doesn't get lost under the Supabase
+detour.
 
-- [ ] Log in at [supabase.com/dashboard](https://supabase.com/dashboard)
-- [ ] Open the Cash Out project — it'll be marked **Paused**
-- [ ] Click **Restore project**
+---
 
-Takes a minute or two. The app should load again right after.
+# Your domain question
 
-**I've already fixed the reason it'll recur.** `.github/workflows/migrate.yml`
-now runs on a schedule (Monday and Thursday) as well as on push — it does a
-real authenticated query against the database each time, which is exactly what
-Supabase counts as activity. As long as that keeps running, the project should
-never sit idle long enough to pause again, whether or not you're actively
-logging shifts that week.
+Answered in chat just now: **keep this app on Vercel, point a subdomain of your
+GoDaddy domain at it via DNS.** No hosting move, no rebuild — my full reasoning
+and the concrete steps are in my reply. Only real "to-do" if you decide to do
+it:
 
-*One nuance worth knowing: the scheduled run can't fire while the project is
-already paused (nothing to connect to), so this prevents the **next** pause —
-it doesn't undo the current one. Only the dashboard click does that.*
+- [ ] Add a DNS record at GoDaddy (Vercel's project → Settings → Domains screen
+      tells you the exact value once you start adding the domain there)
+- [ ] Add the domain in Vercel → this project → Settings → Domains
+
+Both are dashboard actions only you can do — I have no Vercel or GoDaddy
+access from here. Say the word if you want to go ahead and I'll write out the
+exact click-by-click steps.
 
 ---
 
