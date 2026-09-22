@@ -41,13 +41,7 @@ it doesn't undo the current one. Only the dashboard click does that.*
 
 ---
 
-# 2️⃣ One open question — Supabase, or somewhere else
-
-Separate from the outage: I asked you directly, in chat, whether to stay on
-Supabase (with the fix above) or move to something with no free-tier traffic
-minimum at all, like Firebase. That's a real fork — one is free and roughly a
-day of work, the other is free and roughly a full rewrite of the backend — so
-I'm not deciding it here. See my message for the actual tradeoff.
+# 🏁 Where this stands
 
 | MVP feature | State |
 |---|---|
@@ -166,6 +160,7 @@ Kept so we don't relitigate them. Say the word if you want any reopened.
 | Open vs closed periods | An open period's figure is labelled "so far" and never extrapolated to what the finished period might total | Sep 7 |
 | Database password | Rotated after a fragment leaked into a public Actions log; migrations now connect via env vars instead of a URL so this class of leak can't recur | Sep 7 |
 | Keeping the free database awake | The migration workflow now also runs Mon/Thu on a schedule — a real query twice a week, comfortably inside Supabase's 7-day pause window | Sep 22 |
+| Backend platform, after the pause scare | Staying on Supabase rather than paying for Pro or moving to Firebase. The keep-alive fix is free and small; Firebase is free too but would mean rebuilding the data model, RLS and auth from scratch | Sep 22 |
 
 ---
 
