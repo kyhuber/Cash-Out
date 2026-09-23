@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { isValidOtp, normalizeOtp } from "@/lib/auth";
@@ -109,6 +110,34 @@ export async function verifyCode(
   }
 
   redirect("/");
+}
+
+/**
+ * Starts the Google OAuth redirect. Unlike the emailed code, this is a
+ * same-tab navigation the user initiates by tapping a button inside the
+ * installed PWA — it goes to Google and back without ever opening Safari, so
+ * it doesn't hit the storage-container problem a magic link does.
+ */
+export async function signInWithGoogle(): Promise<void> {
+  const { supabase, configError } = await clientOrConfigError();
+  if (!supabase) {
+    redirect(`/sign-in?error=${encodeURIComponent(configError ?? "Supabase is not configured.")}`);
+  }
+
+  const origin = (await headers()).get("origin");
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: `${origin}/auth/callback` },
+  });
+
+  if (error || !data.url) {
+    redirect(
+      `/sign-in?error=${encodeURIComponent(error?.message ?? "Could not start Google sign-in.")}`,
+    );
+  }
+
+  redirect(data.url);
 }
 
 export async function signOut() {

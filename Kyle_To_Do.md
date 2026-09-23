@@ -6,10 +6,46 @@ keys, pay stubs) and decisions only you can make.
 Claude maintains this file. It gets rewritten whenever an action is completed or
 a decision is made, so the top section is always what's actually blocking.
 
-**Last updated:** September 22, 2026 — **the outage is resolved.** You restored
-the project and I confirmed the database is reachable again (the migration
-workflow connected and ran clean). Nothing in this file is currently blocking —
-what's below is one unanswered question from me and one open question from you.
+**Last updated:** September 23, 2026 — **added Google sign-in, blocked on your
+Google Cloud setup.** The code is built and pushed; nothing works until you
+create the OAuth client and paste its keys into Supabase. Steps below.
+
+---
+
+# Blocking: Google sign-in setup
+
+Code side is done — a "Continue with Google" button now sits above the email
+form on the sign-in page, alongside the existing numeric-code flow (which
+still works exactly as before; this is additive, not a replacement).
+
+Two things only you can do, both dashboard clicks, roughly 10 minutes total:
+
+**1. Create a Google OAuth client** (Google Cloud Console):
+- Go to https://console.cloud.google.com/apis/credentials, create a project
+  if you don't already have one for this.
+- **OAuth consent screen** tab: set it to **External**, fill in an app name
+  ("Cash Out" is fine) and your email. Leave it in **Testing** mode — since
+  this is just for you, it never needs Google's verification review. Under
+  "Test users," add your own Google account email.
+- **Credentials** tab → Create Credentials → OAuth client ID → Application
+  type **Web application**.
+- Under **Authorized redirect URIs**, add your Supabase callback URL. It's
+  shown on the Supabase side in the next step (Authentication → Providers →
+  Google — it auto-fills a URL like
+  `https://<your-project-ref>.supabase.co/auth/v1/callback`). Paste that
+  exact URL in here.
+- Save. Google shows you a **Client ID** and **Client Secret** — copy both.
+
+**2. Enable Google in Supabase** (your Supabase project dashboard):
+- Authentication → Providers → find **Google** in the list, toggle it on.
+- Paste in the Client ID and Client Secret from step 1.
+- Save.
+
+That's it — no environment variables to touch, no redeploy needed. Once
+saved, reload the sign-in page and tap "Continue with Google" to test it. If
+Google shows an error about a redirect URI mismatch, it means the URL pasted
+into Google's "Authorized redirect URIs" doesn't exactly match what Supabase
+shows — copy it again rather than retyping it.
 
 ---
 
@@ -127,7 +163,8 @@ Kept so we don't relitigate them. Say the word if you want any reopened.
 
 | Decision | Choice | When |
 |---|---|---|
-| Sign-in method | Emailed numeric code, not magic link or Google. Length is Supabase's setting (6-10), never hardcoded | Aug 29 |
+| Sign-in method | Emailed numeric code, length from Supabase's setting (6-10), never hardcoded. Never a magic link | Aug 29 |
+| Google sign-in | Added alongside the code, not instead of it — the code stays as the no-Google-account fallback | Sep 23 |
 | Shifts store the wage they were worked at | Yes — a raise won't rewrite history | Aug 29 |
 | Overnight shifts | Belong to the date they started; duration wraps 24h | Aug 29 |
 | Tip-out | Tracked, so both gross and take-home can be shown | Aug 29 |
