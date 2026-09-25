@@ -18,6 +18,7 @@ const valid = {
   tips_cash: 40,
   tips_card: 180,
   tip_out: 35,
+  service_charge: 0,
   optional_field_values: {},
   raw_input_text: "Lumen, four til close, 180 on cards and like 40 cash",
 };
@@ -182,6 +183,12 @@ describe("sanitizeParsed", () => {
 
   it("rejects negative money", () => {
     expect(clean({ tips_card: -20 }).tips_card).toBeNull();
+    expect(clean({ service_charge: -20 }).service_charge).toBeNull();
+  });
+
+  it("keeps a service charge at any workplace", () => {
+    // Not gated on a tracked field: it can turn up at any job.
+    expect(clean({ service_charge: 300 }).service_charge).toBe(300);
   });
 
   it("snaps a station onto the spelling already recorded there", () => {

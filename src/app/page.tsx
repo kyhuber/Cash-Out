@@ -16,6 +16,7 @@ import {
 import type { ShiftRow } from "@/lib/shift-summary";
 import type { OptionalFieldKey } from "@/lib/workplace";
 import type { DateOnly, PayPeriodType } from "@/lib/pay-period";
+import type { FilingStatus } from "@/lib/paycheck-taxes";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +43,7 @@ async function loadRecentShifts(
   return supabase
     .from("shifts")
     .select(
-      "id, workplace_id, station, shift_date, clock_in, clock_out, minutes_worked, tips_cash, tips_card, tip_out, hourly_wage_at_time",
+      "id, workplace_id, station, shift_date, clock_in, clock_out, minutes_worked, tips_cash, tips_card, tip_out, service_charge, hourly_wage_at_time, overtime_multiplier_at_time, overtime_threshold_at_time",
     )
     .gte("shift_date", since)
     .order("shift_date", { ascending: false })
@@ -69,7 +70,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     supabase
       .from("workplaces")
       .select(
-        "id, name, hourly_wage, pay_period_type, pay_period_anchor_date, pay_period_end_date, pay_date, overtime_enabled, optional_fields",
+        "id, name, hourly_wage, pay_period_type, pay_period_anchor_date, pay_period_end_date, pay_date, overtime_enabled, optional_fields, w4_filing_status, w4_two_jobs, union_dues_monthly",
       )
       .order("created_at", { ascending: true }),
     loadRecentShifts(supabase),
@@ -91,7 +92,16 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     tips_cash: Number(s.tips_cash),
     tips_card: Number(s.tips_card),
     tip_out: Number(s.tip_out),
+    service_charge: Number(s.service_charge),
     hourly_wage_at_time: Number(s.hourly_wage_at_time),
+    overtime_multiplier_at_time:
+      s.overtime_multiplier_at_time === null
+        ? null
+        : Number(s.overtime_multiplier_at_time),
+    overtime_threshold_at_time:
+      s.overtime_threshold_at_time === null
+        ? null
+        : Number(s.overtime_threshold_at_time),
   }));
 
   const forLogger: LoggerWorkplace[] = (workplaces ?? []).map((w) => ({
@@ -115,6 +125,9 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     pay_period_anchor_date: (w.pay_period_anchor_date ?? null) as DateOnly | null,
     pay_period_end_date: (w.pay_period_end_date ?? null) as DateOnly | null,
     pay_date: (w.pay_date ?? null) as DateOnly | null,
+    w4_filing_status: w.w4_filing_status as FilingStatus,
+    w4_two_jobs: Boolean(w.w4_two_jobs),
+    union_dues_monthly: Number(w.union_dues_monthly ?? 0),
   }));
 
   const workplaceNames = new Map(

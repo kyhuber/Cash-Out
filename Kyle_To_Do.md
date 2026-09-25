@@ -6,74 +6,82 @@ keys, pay stubs) and decisions only you can make.
 Claude maintains this file. It gets rewritten whenever an action is completed or
 a decision is made, so the top section is always what's actually blocking.
 
-**Last updated:** September 23, 2026 — **added Google sign-in, blocked on your
-Google Cloud setup.** The code is built and pushed; nothing works until you
-create the OAuth client and paste its keys into Supabase. Steps below.
+**Last updated:** September 25, 2026 — **service charge, daily overtime,
+take-home estimate and CSV export are built and in a pull request.** Once it
+merges, there are settings only you can fill in. Steps below.
 
 ---
 
-# Blocking: Google sign-in setup
+# Do these next
 
-Code side is done — a "Continue with Google" button now sits above the email
-form on the sign-in page, alongside the existing numeric-code flow (which
-still works exactly as before; this is additive, not a replacement).
+## 1. Merge the pull request
 
-Two things only you can do, both dashboard clicks, roughly 10 minutes total:
+The migration runs on its own when it lands on `main` (the migrate workflow).
+Nothing to paste into the SQL editor.
+
+## 2. Fill in each workplace's new settings (about 2 minutes)
+
+Home page → Workplaces → **Edit** on each. Three new things on the form, all
+read off your stubs:
+
+| Setting | Lumen Field | Climate Pledge Arena |
+|---|---|---|
+| This job pays overtime | ✅ on, 1.5, **after 8 hours** | ✅ on, 1.5, **after 8 hours** |
+| Filing status | Single | Single |
+| Two-jobs box ticked on this W-4 | **✅ yes** | ❌ no |
+| Union dues per month | **$33** | blank |
+
+How I know: Lumen's federal withholding only reproduces with the two-jobs box
+ticked (it withheld $99.87 on $1,181.58), and Climate Pledge's only
+reproduces with it unticked ($0 on $240.51, $26.35 on $568.95). The $33 dues
+came off your Sep 11 Lumen check and not your Sep 25 one, so it's once a
+month, first check of the month.
+
+Until you save these, take-home is estimated as if both jobs were a plain
+single W-4 with no dues — so Lumen will read a little high until step 2 is
+done.
+
+## 3. Check one existing shift over 8 hours
+
+Any shift you'd already logged at a job with overtime switched *on* now gets
+overtime after 8 hours automatically (the migration fills the threshold in).
+A shift saved while that job's overtime was *off* stays without it — editing a
+shift deliberately never rewrites the pay terms it was saved with, so a raise
+can't reach backwards. If a long shift is showing no overtime after step 2,
+tell me and I'll write a one-off migration for those rows rather than have
+you delete and re-log them.
+
+---
+
+# Still blocking: Google sign-in setup
+
+Unchanged from Sep 23. Code side is done — a "Continue with Google" button sits
+above the email form. Two dashboard tasks only you can do, roughly 10 minutes:
 
 **1. Create a Google OAuth client** (Google Cloud Console):
-- Go to https://console.cloud.google.com/apis/credentials, create a project
-  if you don't already have one for this.
-- **OAuth consent screen** tab: set it to **External**, fill in an app name
-  ("Cash Out" is fine) and your email. Leave it in **Testing** mode — since
-  this is just for you, it never needs Google's verification review. Under
-  "Test users," add your own Google account email.
-- **Credentials** tab → Create Credentials → OAuth client ID → Application
-  type **Web application**.
-- Under **Authorized redirect URIs**, add your Supabase callback URL. It's
-  shown on the Supabase side in the next step (Authentication → Providers →
-  Google — it auto-fills a URL like
-  `https://<your-project-ref>.supabase.co/auth/v1/callback`). Paste that
-  exact URL in here.
-- Save. Google shows you a **Client ID** and **Client Secret** — copy both.
+- https://console.cloud.google.com/apis/credentials — create a project if you
+  don't have one.
+- **OAuth consent screen**: External, app name "Cash Out", your email. Leave
+  it in **Testing** mode and add your own Google account under "Test users".
+- **Credentials** → Create Credentials → OAuth client ID → **Web application**.
+- Under **Authorized redirect URIs**, paste the callback URL Supabase shows
+  under Authentication → Providers → Google (looks like
+  `https://<your-project-ref>.supabase.co/auth/v1/callback`).
+- Save, copy the **Client ID** and **Client Secret**.
 
-**2. Enable Google in Supabase** (your Supabase project dashboard):
-- Authentication → Providers → find **Google** in the list, toggle it on.
-- Paste in the Client ID and Client Secret from step 1.
-- Save.
-
-That's it — no environment variables to touch, no redeploy needed. Once
-saved, reload the sign-in page and tap "Continue with Google" to test it. If
-Google shows an error about a redirect URI mismatch, it means the URL pasted
-into Google's "Authorized redirect URIs" doesn't exactly match what Supabase
-shows — copy it again rather than retyping it.
-
----
-
-# One thing I'm still waiting on you for
-
-A couple of messages back I asked what you wanted for a tax estimate on the
-paycheck card (gross + net, using the effective rate off a real stub) and laid
-out three questions: whether your employer's reported gross includes cash
-tips, which stub to calibrate from, and which number should lead. That's still
-open — no rush, just flagging it so it doesn't get lost under the Supabase
-detour.
+**2. Enable Google in Supabase**: Authentication → Providers → Google → on,
+paste both values, save. No env vars, no redeploy.
 
 ---
 
 # Your domain question
 
-Answered in chat just now: **keep this app on Vercel, point a subdomain of your
-GoDaddy domain at it via DNS.** No hosting move, no rebuild — my full reasoning
-and the concrete steps are in my reply. Only real "to-do" if you decide to do
-it:
+Answered Sep 22: **keep this app on Vercel, point a subdomain of your GoDaddy
+domain at it via DNS.** Only if you decide to do it:
 
-- [ ] Add a DNS record at GoDaddy (Vercel's project → Settings → Domains screen
-      tells you the exact value once you start adding the domain there)
+- [ ] Add a DNS record at GoDaddy (Vercel → project → Settings → Domains shows
+      the exact value)
 - [ ] Add the domain in Vercel → this project → Settings → Domains
-
-Both are dashboard actions only you can do — I have no Vercel or GoDaddy
-access from here. Say the word if you want to go ahead and I'll write out the
-exact click-by-click steps.
 
 ---
 
@@ -85,44 +93,52 @@ exact click-by-click steps.
 | 2. Workplace setup | ✅ Built |
 | 3. Conversational shift logging | ✅ Built and confirmed working live |
 | 4. Shift history | ✅ Built |
-| 5. Pay-period summary | ✅ Built |
+| 5. Pay-period summary | ✅ Built, now with overtime, service charge and take-home |
 
-**Next paycheck now leads the page** — one card per job, soonest first, showing
-what that check will be and the Friday it lands.
+**What changed on Sep 25**, from your five requests and four stubs:
 
-This fixed a real error, not just the layout. The page used to show *the pay
-period containing today*, which is not the same thing as your next check. A
-period is paid the Friday after it ends, so in the stretch between a period
-closing and its payday, the money arriving next belongs to the period that
-already finished — while "the current period" has barely started. For several
-days each cycle you were being shown the wrong period's money.
+- **Service charge** is a box on every shift, at every job. It's added to the
+  check as wages, not as a tip, and taxed that way.
+- **Every shift row shows how it adds up**: `$306.36 pay · 2 hrs OT · $861.29
+  tips` under the name, with the shift's total on the right instead of just
+  the tips. Opening a shift shows the full arithmetic, line by line.
+- **The paycheck card** shows gross, then "about $X after tax" under it, with
+  a tap-to-open breakdown: hours at your rate, overtime, service charge, card
+  tips, gross, then each deduction and estimated take-home.
+- **Daily overtime**: 1.5× after 8 hours in one shift, at both jobs. The rate
+  and hours are rounded the way the stubs round them, so 2 hours of overtime at
+  $27.85 is $83.56, matching the stub, not $83.55.
+- **Cash tips** are still tracked and still count toward what a shift earned,
+  but they're not in the paycheck figure — neither employer puts them on the
+  check, so a figure that included them could never match a stub. The card
+  says "plus $X in cash tips you already took home."
+- **CSV export**: a link under Recent shifts downloads every shift ever logged,
+  one row each, with the per-shift arithmetic and the pay period and pay date
+  it falls in. Opens in Google Sheets, Numbers or Excel.
 
-Each card says whether the period is **closed** (the figure is final) or
-**still open** (it says "so far", and can only go up). Nothing is extrapolated:
-shifts you haven't worked yet are never guessed at.
+**How the take-home estimate works.** Every line on your four stubs is
+reproduced: federal withholding to the cent on all four (IRS percentage
+method, 2026 tables, using the W-4 settings above), Social Security 6.2%,
+Medicare 1.45%, WA paid leave 0.8066%, WA Cares 0.58%, each within a cent.
+The tax tables are keyed by year — when 2027 checks start, the card will say
+"no tax tables for 2027 yet" until I add them, rather than quietly using 2026's.
 
-It also cross-checks the pay date on your stub against the Friday rule. If they
-disagree, the card says so — either the rule doesn't hold for that job or a
-date was mistyped, and both are worth knowing.
+**Where a stub can still differ**, by a few dollars at most: Lumen's
+meal/break premium and holiday rate, Climate Pledge's guaranteed-hours top-up,
+the two sub-dollar Washington fund lines, and the last cent of each flat-rate
+tax (employers round those on year-to-date pay). None of those are things the
+app can know from a shift.
 
-**Below that:** the logger, then recent shifts (filterable by employer, tap any
-to correct or delete it), then workplaces as a quiet settings row.
-
-Workplaces no longer carry their own money figure. They used to show "this
-period", which would now sit on the same screen as a *different* number for the
-same job — the one being paid next. Two totals for one job is worse than one.
-
-*Tax withholding is deliberately not in that number, and neither is overtime.
-Both are a later phase — a half-built version of either produces a figure that
-looks authoritative and isn't, which is the one thing this app can't do.*
-
-**What's left is the part nobody can shortcut:** logging real shifts for two or
-three weeks, telling me every time the parser trips, and holding a summary
-against an actual stub.
+**What's left is the part nobody can shortcut:** logging shifts, holding the
+card against the next two stubs, and telling me anything that's off.
 
 ---
 
 # 📋 Later — not blocking
+
+**2027 tax tables** — needed in January. Federal brackets, the standard
+deduction and the WA paid-leave rate all change; I'll transcribe them and check
+against your first 2027 stub. Send that stub when it arrives.
 
 **Friends** — self-serve signup, or do you provision accounts?
 *My lean: self-serve.*
@@ -130,18 +146,11 @@ against an actual stub.
 **Repo visibility** — public right now. Fine for the code (no keys in it), but
 worth a deliberate choice before you invite anyone.
 
-**Tax withholding** — your stated later phase. It turns the estimated-gross
-figure into a take-home-after-tax one, which needs filing status, allowances and
-state rules. Real scope, worth doing properly, and not started.
-
 **Parser cost and accuracy** — Claude Opus 5 at medium effort, a deliberate
-trade: slightly less thoroughness for a faster answer, since you're standing in
-a parking lot and the card catches mistakes anyway. Roughly a cent or two per
-shift. **If it starts misreading you, raising that setting is the first thing to
-try** — before rewriting any prompt.
+trade. **If it starts misreading you, raising that setting is the first thing
+to try** — before rewriting any prompt.
 
-**A local copy of the code** — not needed; GitHub holds the durable copy. Only
-worth it to run the dev server or read the code in an editor:
+**A local copy of the code** — not needed; GitHub holds the durable copy.
 
 ```bash
 git clone https://github.com/kyhuber/Cash-Out.git
@@ -150,10 +159,6 @@ npm install
 cp .env.example .env.local    # SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, ANTHROPIC_API_KEY
 npm run dev
 ```
-
-Needs Git and Node 22. Pointing `.env.local` at your live Supabase project means
-local testing writes to the same database the real app uses — a second free
-project keeps test data out of the real one.
 
 ---
 
@@ -165,7 +170,7 @@ Kept so we don't relitigate them. Say the word if you want any reopened.
 |---|---|---|
 | Sign-in method | Emailed numeric code, length from Supabase's setting (6-10), never hardcoded. Never a magic link | Aug 29 |
 | Google sign-in | Added alongside the code, not instead of it — the code stays as the no-Google-account fallback | Sep 23 |
-| Shifts store the wage they were worked at | Yes — a raise won't rewrite history | Aug 29 |
+| Shifts store the wage they were worked at | Yes — a raise won't rewrite history. Overtime terms are stored the same way | Aug 29, Sep 25 |
 | Overnight shifts | Belong to the date they started; duration wraps 24h | Aug 29 |
 | Tip-out | Tracked, so both gross and take-home can be shown | Aug 29 |
 | Framework | Next.js 16 + Supabase + Vercel | Aug 29 |
@@ -187,17 +192,23 @@ Kept so we don't relitigate them. Say the word if you want any reopened.
 | Parser model | Claude Opus 5, adaptive thinking, medium effort — latency matters more than the last few points of accuracy when a card catches errors | Sep 3 |
 | Applying migrations | Every migration is idempotent, and CI applies all of them on every push. No migration-state table to drift or repair | Sep 3 |
 | Home page order | Logger, then recent shifts, then workplaces. Configuration goes last | Sep 7 |
-| Workplace rows | Demoted to a quiet row with a live period summary and an explicit Edit link, rather than a card that opens a form | Sep 7 |
+| Workplace rows | Demoted to a quiet row with an explicit Edit link, rather than a card that opens a form | Sep 7 |
 | Per-workplace views | Handled by filtering the shift list, not a separate workplace detail page | Sep 7 |
-| Summary headline number | What the employer owes: hours × wage + tips. Tip-out subtracted only for take-home | Sep 7 |
-| Tax withholding and overtime | Excluded from the estimate on purpose. A partial version looks authoritative and isn't. Later phase | Sep 7 |
 | Scope | Log shift data, keep it available to look at, calculate what a paycheck should look like. No analytics, trends, projections or comparisons — and nothing built speculatively for later | Sep 7 |
 | Headline of the app | The next paycheck per job, above the logger. Not the period containing today — those differ for several days each cycle | Sep 7 |
 | Pay date rule | The first Friday strictly after a period ends. No holiday or weekend shifting for now | Sep 7 |
 | Open vs closed periods | An open period's figure is labelled "so far" and never extrapolated to what the finished period might total | Sep 7 |
 | Database password | Rotated after a fragment leaked into a public Actions log; migrations now connect via env vars instead of a URL so this class of leak can't recur | Sep 7 |
-| Keeping the free database awake | The migration workflow now also runs Mon/Thu on a schedule — a real query twice a week, comfortably inside Supabase's 7-day pause window | Sep 22 |
-| Backend platform, after the pause scare | Staying on Supabase rather than paying for Pro or moving to Firebase. The keep-alive fix is free and small; Firebase is free too but would mean rebuilding the data model, RLS and auth from scratch | Sep 22 |
+| Keeping the free database awake | The migration workflow also runs Mon/Thu on a schedule — a real query twice a week, comfortably inside Supabase's 7-day pause window | Sep 22 |
+| Backend platform, after the pause scare | Staying on Supabase rather than paying for Pro or moving to Firebase | Sep 22 |
+| Paycheck headline number | What lands on the check: regular hours × wage + daily overtime + service charge + card tips. Gross leads, take-home under it | Sep 25 |
+| Cash tips | Still tracked and counted in what a shift earned, but not in the paycheck figure — they're not on either employer's check | Sep 25 |
+| Service charge | A box on every shift at every job. Pay from the employer, taxed as wages, never a tip | Sep 25 |
+| Overtime | Daily: 1.5× after 8 hours in one shift, at both jobs. Weekly 40-hour overtime not modelled. Threshold stored per workplace and snapshotted on each shift | Sep 25 |
+| Take-home estimate | Real calculation, not a calibrated rate: IRS percentage method from the W-4 settings stored per workplace, plus the fixed WA and FICA rates. Tables keyed by year; a missing year says so rather than borrowing | Sep 25 |
+| Rounding | Mirrors the stubs: hours to hundredths and the overtime rate to cents before multiplying | Sep 25 |
+| Google Sheets as the database | No — no per-user access control, no constraints, and it was the high-friction tool this app replaced. Instead, a one-tap CSV export of every shift, which opens in Sheets | Sep 25 |
+| Reporting | The CSV export *is* the reporting. No in-app charts or summaries beyond the paycheck card | Sep 25 |
 
 ---
 
@@ -211,21 +222,23 @@ Kept so we don't relitigate them. Say the word if you want any reopened.
 - **Data:** schema with row-level security, tested against cross-user reads,
   writes and deletes, plus constraints tested against bad input.
 - **Workplace setup:** add, edit and delete, with wage, three-date pay period
-  (cadence derived, not asked), overtime terms and optional tracked fields.
+  (cadence derived, not asked), daily overtime terms, W-4 settings, union dues
+  and optional tracked fields.
 - **Shift logging:** freeform text → Claude → editable confirmation card → saved
   shift. Anything unsaid stays an empty box; the raw sentence is kept for
-  tuning; the card shows hours so a misread am/pm is visible.
+  tuning; the card shows hours so a misread am/pm is visible. Service charge is
+  a field on the card.
 - **Bar / lounge per shift**, with spellings snapped to what's already recorded.
 - **Shift history:** recent shifts newest-first, filterable by employer, each
-  tappable to edit or delete. Editing never rewrites the wage a shift was
-  worked at.
-- **Pay-period summary** per workplace: period dates, hours, tips and estimated
-  gross at `hours × wage + tips`, computed from the browser's date so it can't
-  land in the wrong period.
-- **Next paycheck**, leading the home page: the amount and the Friday it lands,
-  for each job, with the period marked closed or still open.
+  showing how its pay adds up and tappable to edit or delete. Editing never
+  rewrites the wage or overtime terms a shift was worked at.
+- **Next paycheck**, leading the home page: gross and estimated take-home, the
+  Friday it lands, and a line-by-line breakdown, for each job, with the period
+  marked closed or still open.
+- **Tax math** built from four real stubs and tested against their figures.
+- **CSV export** of every shift.
 - **Migrations:** all idempotent, applied by CI, and the test suite applies every
   one twice to prove a re-run is a no-op.
 - **PWA shell:** manifest, icons, iOS home-screen support.
-- **Math:** pay-period bucketing, cadence derivation and shift duration, unit
-  tested and matched against the database's own constraints.
+- **Math:** pay-period bucketing, cadence derivation, shift duration and shift
+  pay, unit tested and matched against the database's own constraints.

@@ -68,11 +68,33 @@ Read `Cash_Out_PRD.md` first — it's the full spec. This file is for the invari
   disagrees with the rule, say so rather than silently overriding either.
 - A paycheck figure for an open period is labelled "so far". It can still grow,
   and nothing extrapolates it — shifts not yet worked are not guessed at.
-- The pay-period summary's headline number is what the EMPLOYER OWES:
-  hours x wage + tips, with tip-out subtracted only for take-home. Overtime is
-  deliberately not applied (the multiplier is captured but weekly-threshold
-  aggregation is backlog), and neither is tax withholding. A half-implemented
-  version of either produces a number that looks authoritative and isn't.
+- The pay-period summary's headline number is what lands ON THE CHECK:
+  regular hours x wage + daily overtime + service charge + card tips. Cash tips
+  are tracked but never in that figure — neither employer puts them on the
+  check, so a figure that included them could never match a stub. They are
+  shown separately as money already taken home. Tip-out is never subtracted
+  from it either; it happens afterwards, out of pocket.
+- Overtime is DAILY: hours past `overtime_daily_threshold_hours` in ONE SHIFT
+  are paid at the multiplier. Both are snapshotted onto the shift
+  (`overtime_multiplier_at_time`, `overtime_threshold_at_time`) for the same
+  reason the wage is. Weekly 40-hour overtime is not modelled and, with two
+  employers, would not combine anyway. Rounding mirrors the stubs: hours to
+  hundredths and the overtime rate to cents BEFORE multiplying — see
+  `src/lib/shift-pay.ts`, whose tests are the stub figures.
+- A service charge (`shifts.service_charge`) is pay from the employer, taxed as
+  wages. It is never a tip and never goes in a tips field, in the parser or on
+  the card. It can occur at any job, so it is a plain column, not a tracked
+  optional field.
+- Take-home is an ESTIMATE, computed in `src/lib/paycheck-taxes.ts` from the
+  W-4 settings stored per workplace (`w4_filing_status`, `w4_two_jobs`) plus
+  fixed statutory rates and flat monthly union dues. Every table is keyed by
+  YEAR, and a year with no table yields null — the card says so. Never fall
+  back to another year's numbers. The four September 2026 stubs are the tests:
+  federal withholding must reproduce to the cent, the flat-rate lines to
+  within one (employers round those cumulatively on year-to-date pay).
+- Union dues come off the first pay date of each calendar month, decided by
+  whether the previous period's pay date fell in a different month
+  (`isFirstPayDateOfMonth`). Not "the first check after the 1st".
 - The home page order is logger, then shifts, then workplaces. Workplaces are
   configuration touched twice a year; giving them a prominent tap target that
   opens a form promises content and delivers settings.
@@ -125,10 +147,12 @@ nothing on screen depends on. If a feature is genuinely next, it will be asked
 for, and it is cheap to write then.
 
 MVP is Section 5 of the PRD. Backlog items (Section 9) — automated paycheck
-reconciliation, real overtime math, dashboards, exports, notifications, tip-out
+reconciliation, weekly overtime math, dashboards, notifications, tip-out
 splitting, App Store distribution — are out of scope unless explicitly asked
-for. Tax withholding is Kyle's own stated later phase, and the estimate stays
-`hours x wage + tips` until then.
+for. Daily overtime, the take-home estimate and the CSV export were each
+explicitly asked for (Sep 25), which is the only reason they exist. The export
+is the whole answer to "reporting": the record, in a spreadsheet, for Kyle to
+slice however he likes. Do not build in-app reports on top of it.
 
 ## Build/run commands
 
