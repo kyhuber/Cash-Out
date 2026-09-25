@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { FILING_STATUS_VALUES } from "./paycheck-taxes";
 import {
   OPTIONAL_FIELD_KEYS,
   PAY_PERIOD_TYPES,
@@ -59,6 +60,17 @@ describe("schema agreement with the database", () => {
 
     expect(sqlValues).toEqual(PAY_PERIOD_TYPES.map((t) => t.value).sort());
   });
+
+  it("W-4 filing statuses match the w4_filing_status_known constraint", () => {
+    const sqlValues = effectiveConstraint(
+      /constraint w4_filing_status_known\s+check \(w4_filing_status in \(([^)]+)\)/g,
+    )
+      .split(",")
+      .map((s) => s.trim().replace(/^'|'$/g, ""))
+      .sort();
+
+    expect(sqlValues).toEqual([...FILING_STATUS_VALUES].sort());
+  });
 });
 
 const valid = {
@@ -71,6 +83,10 @@ const valid = {
   pay_period_type: null,
   overtime_enabled: false,
   overtime_multiplier: null,
+  overtime_daily_threshold_hours: 8,
+  w4_filing_status: "single" as const,
+  w4_two_jobs: false,
+  union_dues_monthly: 0,
   optional_fields: ["total_sales" as const],
 };
 
@@ -162,6 +178,30 @@ describe("workplaceSchema", () => {
     ).toBe(true);
   });
 
+  it("rejects an overtime threshold that is not a shift length", () => {
+    expect(
+      workplaceSchema.safeParse({ ...valid, overtime_daily_threshold_hours: 0 })
+        .success,
+    ).toBe(false);
+    expect(
+      workplaceSchema.safeParse({ ...valid, overtime_daily_threshold_hours: 30 })
+        .success,
+    ).toBe(false);
+  });
+
+  it("rejects a filing status the tax tables don't know", () => {
+    expect(
+      workplaceSchema.safeParse({ ...valid, w4_filing_status: "married" })
+        .success,
+    ).toBe(false);
+  });
+
+  it("rejects negative union dues", () => {
+    expect(
+      workplaceSchema.safeParse({ ...valid, union_dues_monthly: -1 }).success,
+    ).toBe(false);
+  });
+
   it("rejects unknown optional field keys", () => {
     expect(
       workplaceSchema.safeParse({ ...valid, optional_fields: ["bogus"] })
@@ -237,6 +277,10 @@ describe("periodPrefill", () => {
     pay_date: "2026-08-21",
     overtime_enabled: false,
     overtime_multiplier: null,
+    overtime_daily_threshold_hours: 8,
+    w4_filing_status: "single",
+    w4_two_jobs: false,
+    union_dues_monthly: 0,
     optional_fields: [],
   };
 

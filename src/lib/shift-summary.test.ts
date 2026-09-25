@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isFirstPayDateOfMonth,
   nextPaycheck,
   shiftsInPeriod,
   summarisePeriod,
@@ -17,7 +18,10 @@ const shift = (over: Partial<ShiftRow>): ShiftRow => ({
   tips_cash: 0,
   tips_card: 0,
   tip_out: 0,
+  service_charge: 0,
   hourly_wage_at_time: 20,
+  overtime_multiplier_at_time: null,
+  overtime_threshold_at_time: null,
   station: null,
   ...over,
 });
@@ -49,7 +53,7 @@ describe("shiftsInPeriod", () => {
 const period = { start: "2026-08-31", end: "2026-09-13" };
 
 describe("summarisePeriod", () => {
-  it("totals hours, tips and employer-owed gross", () => {
+  it("totals hours, tips and what lands on the check", () => {
     const s = summarisePeriod(
       [
         shift({ id: "a", minutes_worked: 360, tips_card: 180, tips_cash: 40 }),
@@ -60,9 +64,46 @@ describe("summarisePeriod", () => {
     );
     expect(s.shifts).toBe(2);
     expect(s.hours).toBe(11);
-    expect(s.tips).toBe(320);
-    // 11 hrs x $20 = $220 wages, + $320 tips
-    expect(s.gross).toBe(540);
+    expect(s.wages).toBe(220);
+    expect(s.tipsCard).toBe(280);
+    expect(s.tipsCash).toBe(40);
+    // 11 hrs x $20 = $220 wages, + $280 card tips. The $40 cash was taken
+    // home on the night and is not on the check.
+    expect(s.gross).toBe(500);
+  });
+
+  it("counts a service charge as pay on the check", () => {
+    const s = summarisePeriod(
+      [shift({ minutes_worked: 600, service_charge: 300 })],
+      "w1",
+      period,
+    );
+    expect(s.serviceCharge).toBe(300);
+    expect(s.gross).toBe(200 + 300);
+  });
+
+  it("applies daily overtime from the terms stored on each shift", () => {
+    const s = summarisePeriod(
+      [
+        shift({
+          id: "long",
+          minutes_worked: 600,
+          overtime_multiplier_at_time: 1.5,
+          overtime_threshold_at_time: 8,
+        }),
+        shift({
+          id: "no-ot-then",
+          shift_date: "2026-09-03",
+          minutes_worked: 600,
+        }),
+      ],
+      "w1",
+      period,
+    );
+    expect(s.overtimeHours).toBe(2);
+    expect(s.wages).toBe(8 * 20 + 10 * 20);
+    expect(s.overtime).toBe(2 * 30);
+    expect(s.gross).toBe(360 + 60);
   });
 
   it("never lets tip-out reduce what the employer owes", () => {
@@ -111,7 +152,8 @@ describe("summarisePeriod", () => {
     expect(summarisePeriod([], "w1", period)).toMatchObject({
       shifts: 0,
       hours: 0,
-      tips: 0,
+      tipsCard: 0,
+      tipsCash: 0,
       gross: 0,
     });
   });
@@ -217,5 +259,69 @@ describe("nextPaycheck", () => {
 
   it("says nothing when the workplace predates the stored pay date", () => {
     expect(nextPaycheck([], biweekly, "2026-09-07").stubPayDateMismatch).toBeUndefined();
+  });
+});
+
+describe("nextPaycheck take-home", () => {
+  it("estimates net from the workplace's W-4 settings", () => {
+    const p = nextPaycheck(
+      [shift({ minutes_worked: 600, tips_card: 300 })],
+      { ...biweekly, w4_filing_status: "single", w4_two_jobs: true },
+      "2026-09-07",
+    );
+    expect(p.summary.gross).toBe(500);
+    expect(p.takeHome).not.toBeNull();
+    expect(p.takeHome!.net).toBeLessThan(500);
+    expect(p.takeHome!.deductions.map((d) => d.key)).toEqual([
+      "federal",
+      "social_security",
+      "medicare",
+      "wa_paid_leave",
+      "wa_cares",
+    ]);
+  });
+
+  it("says nothing about net for a year it has no tables for", () => {
+    const p = nextPaycheck([], biweekly, "2027-03-01");
+    expect(p.takeHome).toBeNull();
+  });
+
+  /**
+   * Off the Lumen stubs: the period paid Sep 11 carried $33 of dues, the one
+   * paid Sep 25 did not. Dues come off the first check of the month.
+   */
+  it("takes union dues off the first check of the month only", () => {
+    // Anchored on Sat 22 Aug 2026: Aug 22-Sep 4 pays Sep 11, Sep 5-18 pays Sep 25.
+    const lumen: SummaryWorkplace = {
+      id: "w1",
+      pay_period_type: "biweekly",
+      pay_period_anchor_date: "2026-08-22",
+      union_dues_monthly: 33,
+    };
+    const first = nextPaycheck([shift({ shift_date: "2026-08-25" })], lumen, "2026-09-06");
+    expect(first.payDate).toBe("2026-09-11");
+    expect(first.takeHome!.deductions.find((d) => d.key === "union_dues")?.amount).toBe(33);
+
+    const second = nextPaycheck([shift({ shift_date: "2026-09-10" })], lumen, "2026-09-20");
+    expect(second.payDate).toBe("2026-09-25");
+    expect(second.takeHome!.deductions.some((d) => d.key === "union_dues")).toBe(false);
+  });
+});
+
+describe("isFirstPayDateOfMonth", () => {
+  it("looks at when the period before was paid", () => {
+    // Weekly, Mon-Sun, paid the Friday after: Aug 31-Sep 6 pays Sep 11 and the
+    // one before it paid Sep 4, so Sep 11 is not the first check of September.
+    const weekly: SummaryWorkplace = {
+      id: "w1",
+      pay_period_type: "weekly",
+      pay_period_anchor_date: "2026-08-31",
+    };
+    expect(
+      isFirstPayDateOfMonth({ start: "2026-08-31", end: "2026-09-06" }, "2026-09-11", weekly),
+    ).toBe(false);
+    expect(
+      isFirstPayDateOfMonth({ start: "2026-08-24", end: "2026-08-30" }, "2026-09-04", weekly),
+    ).toBe(true);
   });
 });

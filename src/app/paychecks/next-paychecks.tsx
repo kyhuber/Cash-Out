@@ -2,7 +2,12 @@
 
 import { useSyncExternalStore } from "react";
 import { localToday } from "@/lib/shift";
-import { nextPaycheck, type ShiftRow, type SummaryWorkplace } from "@/lib/shift-summary";
+import {
+  nextPaycheck,
+  type Paycheck,
+  type ShiftRow,
+  type SummaryWorkplace,
+} from "@/lib/shift-summary";
 import type { DateOnly } from "@/lib/pay-period";
 
 export type PaycheckWorkplace = SummaryWorkplace & { name: string };
@@ -37,6 +42,83 @@ function periodLabel(start: DateOnly, end: DateOnly): string {
 
 /** The local date never changes underneath us while the page is open. */
 const subscribeToNothing = () => () => {};
+
+function Line({
+  label,
+  amount,
+  strong,
+  negative,
+}: {
+  label: string;
+  amount: number;
+  strong?: boolean;
+  negative?: boolean;
+}) {
+  return (
+    <div
+      className={
+        "flex items-baseline justify-between gap-3 tabular-nums " +
+        (strong ? "font-medium" : "")
+      }
+    >
+      <span className="text-sm">{label}</span>
+      <span className="text-sm">
+        {negative ? "−" : ""}
+        {money(amount)}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Gross to take-home, one line each. Collapsed by default: the two figures
+ * above it are what you glance at, and this is what you open when one of them
+ * looks wrong against a stub.
+ */
+function HowItAddsUp({ check }: { check: Paycheck }) {
+  const s = check.summary;
+  const regularHours = Math.round((s.hours - s.overtimeHours) * 100) / 100;
+  return (
+    <details className="mt-2 group">
+      <summary className="text-xs underline opacity-70 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+        <span className="group-open:hidden">How this adds up</span>
+        <span className="hidden group-open:inline">Hide the breakdown</span>
+      </summary>
+
+      <div className="mt-2 flex flex-col gap-1">
+        <Line label={`${regularHours} hrs at your rate`} amount={s.wages} />
+        {s.overtimeHours > 0 ? (
+          <Line label={`${s.overtimeHours} hrs overtime`} amount={s.overtime} />
+        ) : null}
+        {s.serviceCharge > 0 ? (
+          <Line label="Service charge" amount={s.serviceCharge} />
+        ) : null}
+        <Line label="Card tips" amount={s.tipsCard} />
+        <Line label="Gross" amount={s.gross} strong />
+
+        {check.takeHome ? (
+          <>
+            {check.takeHome.deductions.map((d) => (
+              <Line key={d.key} label={d.label} amount={d.amount} negative />
+            ))}
+            <Line label="Estimated take-home" amount={check.takeHome.net} strong />
+          </>
+        ) : (
+          <p className="text-xs opacity-60 mt-1">
+            No tax tables loaded for {check.payDate.slice(0, 4)} yet, so no
+            take-home estimate for this check.
+          </p>
+        )}
+
+        {s.tipsCash > 0 ? (
+          <p className="text-xs opacity-60 mt-1 tabular-nums">
+            Plus {money(s.tipsCash)} in cash tips you already took home.
+          </p>
+        ) : null}
+      </div>
+    </details>
+  );
+}
 
 export function NextPaychecks({
   workplaces,
@@ -92,6 +174,17 @@ export function NextPaychecks({
               )}
             </p>
 
+            {/* Net sits right under gross, smaller. Gross is the figure to hold
+                against the stub's top line; net is what should reach the bank. */}
+            {check.takeHome ? (
+              <p className="text-sm opacity-70 tabular-nums">
+                about {money(check.takeHome.net)} after tax
+                {check.takeHome.deductions.some((d) => d.key === "union_dues")
+                  ? " and dues"
+                  : ""}
+              </p>
+            ) : null}
+
             <p className="mt-1 text-xs opacity-60 tabular-nums">
               {periodLabel(check.period.start, check.period.end)}
               {check.periodClosed ? " · closed" : " · still open"} ·{" "}
@@ -104,7 +197,9 @@ export function NextPaychecks({
               <p className="mt-1 text-xs opacity-60">
                 Nothing logged in this period yet.
               </p>
-            ) : null}
+            ) : (
+              <HowItAddsUp check={check} />
+            )}
 
             {check.stubPayDateMismatch ? (
               <p className="mt-2 text-xs text-amber-700 dark:text-amber-500">
@@ -117,12 +212,15 @@ export function NextPaychecks({
         ))}
       </ul>
 
-      {/* The three reasons the real deposit can differ. Said once, not per card,
+      {/* The reasons the real deposit can differ. Said once, not per card,
           because a number that reads as final and isn't is the failure this app
           exists to prevent. */}
       <p className="mt-3 text-xs opacity-60">
-        Before tax and deductions. Counts only shifts you&apos;ve logged, and
-        doesn&apos;t apply overtime.
+        Counts only shifts you&apos;ve logged. Cash tips aren&apos;t on the
+        check, so they aren&apos;t in these figures. Take-home is an estimate
+        from each job&apos;s W-4 settings and this year&apos;s rates; a stub
+        can differ by a few cents of rounding, or by pay the app doesn&apos;t
+        know about like a break premium or holiday rate.
       </p>
     </section>
   );

@@ -148,4 +148,79 @@ begin
   values ('33333333-3333-3333-3333-333333333333', 'Tracks its bars', 20,
           'biweekly', '2026-08-03', array['station']);
   raise notice 'PASS station accepted as a tracked optional field';
+
+  -- --- a service charge is money, so never negative (migration 0005) ---
+  rejected := false;
+  begin
+    insert into shifts (user_id, workplace_id, shift_date, clock_in, clock_out,
+                        hourly_wage_at_time, service_charge)
+    select '33333333-3333-3333-3333-333333333333', id, '2026-08-27', '16:00', '22:00', 20, -1
+    from workplaces where name = 'Monthly job';
+  exception when check_violation then rejected := true;
+  end;
+  if not rejected then raise exception 'FAIL: negative service charge accepted'; end if;
+  raise notice 'PASS negative service charge rejected';
+
+  insert into shifts (user_id, workplace_id, shift_date, clock_in, clock_out,
+                      hourly_wage_at_time, service_charge,
+                      overtime_multiplier_at_time, overtime_threshold_at_time)
+  select '33333333-3333-3333-3333-333333333333', id, '2026-08-28', '16:00', '02:30', 20, 300, 1.5, 8
+  from workplaces where name = 'Monthly job';
+  raise notice 'PASS a shift records its service charge and overtime terms';
+
+  -- --- the overtime threshold is hours in a shift, so positive when set ---
+  rejected := false;
+  begin
+    insert into shifts (user_id, workplace_id, shift_date, clock_in, clock_out,
+                        hourly_wage_at_time, overtime_threshold_at_time)
+    select '33333333-3333-3333-3333-333333333333', id, '2026-08-29', '16:00', '22:00', 20, 0
+    from workplaces where name = 'Monthly job';
+  exception when check_violation then rejected := true;
+  end;
+  if not rejected then raise exception 'FAIL: zero overtime threshold accepted on a shift'; end if;
+  raise notice 'PASS zero overtime threshold rejected on a shift';
+
+  rejected := false;
+  begin
+    insert into workplaces (user_id, name, hourly_wage, pay_period_type, overtime_daily_threshold_hours)
+    values ('33333333-3333-3333-3333-333333333333', 'OT after nothing', 20, 'monthly', 0);
+  exception when check_violation then rejected := true;
+  end;
+  if not rejected then raise exception 'FAIL: zero overtime threshold accepted on a workplace'; end if;
+  raise notice 'PASS zero overtime threshold rejected on a workplace';
+
+  -- --- W-4 filing status is one the tax tables know (migration 0005) ---
+  rejected := false;
+  begin
+    insert into workplaces (user_id, name, hourly_wage, pay_period_type, w4_filing_status)
+    values ('33333333-3333-3333-3333-333333333333', 'Odd W-4', 20, 'monthly', 'married');
+  exception when check_violation then rejected := true;
+  end;
+  if not rejected then raise exception 'FAIL: unknown filing status accepted'; end if;
+  raise notice 'PASS unknown W-4 filing status rejected';
+
+  insert into workplaces (user_id, name, hourly_wage, pay_period_type,
+                          w4_filing_status, w4_two_jobs, union_dues_monthly)
+  values ('33333333-3333-3333-3333-333333333333', 'Two jobs, dues', 20, 'monthly',
+          'single', true, 33);
+  raise notice 'PASS W-4 settings and union dues stored';
+
+  -- --- union dues are money, so never negative ---
+  rejected := false;
+  begin
+    insert into workplaces (user_id, name, hourly_wage, pay_period_type, union_dues_monthly)
+    values ('33333333-3333-3333-3333-333333333333', 'Negative dues', 20, 'monthly', -5);
+  exception when check_violation then rejected := true;
+  end;
+  if not rejected then raise exception 'FAIL: negative union dues accepted'; end if;
+  raise notice 'PASS negative union dues rejected';
+
+  -- --- pre-0005 rows get sane defaults ---
+  if (select overtime_daily_threshold_hours from workplaces where name = 'Monthly job') <> 8 then
+    raise exception 'FAIL: overtime threshold did not default to 8';
+  end if;
+  if (select w4_filing_status from workplaces where name = 'Monthly job') <> 'single' then
+    raise exception 'FAIL: W-4 filing status did not default to single';
+  end if;
+  raise notice 'PASS workplace defaults: overtime after 8, single W-4';
 end $$;

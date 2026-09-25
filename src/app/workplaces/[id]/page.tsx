@@ -22,7 +22,7 @@ export default async function EditWorkplacePage({
   const { data } = await supabase
     .from("workplaces")
     .select(
-      "id, name, hourly_wage, overtime_enabled, overtime_multiplier, pay_period_type, pay_period_anchor_date, pay_period_end_date, pay_date, optional_fields",
+      "id, name, hourly_wage, overtime_enabled, overtime_multiplier, overtime_daily_threshold_hours, w4_filing_status, w4_two_jobs, union_dues_monthly, pay_period_type, pay_period_anchor_date, pay_period_end_date, pay_date, optional_fields",
     )
     .eq("id", id)
     .maybeSingle();
@@ -34,6 +34,8 @@ export default async function EditWorkplacePage({
     hourly_wage: Number(data.hourly_wage),
     overtime_multiplier:
       data.overtime_multiplier === null ? null : Number(data.overtime_multiplier),
+    overtime_daily_threshold_hours: Number(data.overtime_daily_threshold_hours),
+    union_dues_monthly: Number(data.union_dues_monthly),
   };
 
   return (

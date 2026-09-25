@@ -7,6 +7,7 @@ import {
   type PayPeriodType,
   type DateOnly,
 } from "@/lib/pay-period";
+import { FILING_STATUS_VALUES, type FilingStatus } from "@/lib/paycheck-taxes";
 
 /**
  * The optional per-workplace tracked fields from PRD section 6.2.
@@ -105,6 +106,18 @@ export const workplaceSchema = z
       .min(1, { error: "Must be at least 1" })
       .max(5, { error: "That looks too high" })
       .nullable(),
+    // Hours in ONE SHIFT after which overtime applies. Kept even when overtime
+    // is off, so switching it on later starts from the last value, not blank.
+    overtime_daily_threshold_hours: z
+      .number({ error: "Enter the hours before overtime starts" })
+      .min(0.25, { error: "Must be at least a quarter hour" })
+      .max(24, { error: "A shift can't be longer than a day" }),
+    w4_filing_status: z.enum(
+      FILING_STATUS_VALUES as [FilingStatus, ...FilingStatus[]],
+      { error: "Pick the filing status on your W-4" },
+    ),
+    w4_two_jobs: z.boolean(),
+    union_dues_monthly: money,
     optional_fields: z.array(
       z.enum(OPTIONAL_FIELD_KEYS as [OptionalFieldKey, ...OptionalFieldKey[]]),
     ),
@@ -161,6 +174,10 @@ export type Workplace = {
   pay_date: DateOnly | null;
   overtime_enabled: boolean;
   overtime_multiplier: number | null;
+  overtime_daily_threshold_hours: number;
+  w4_filing_status: FilingStatus;
+  w4_two_jobs: boolean;
+  union_dues_monthly: number;
   optional_fields: OptionalFieldKey[];
 };
 
@@ -195,6 +212,10 @@ export function toWorkplaceRow(input: WorkplaceInput): WorkplaceRow {
     overtime_multiplier: input.overtime_enabled
       ? input.overtime_multiplier
       : null,
+    overtime_daily_threshold_hours: input.overtime_daily_threshold_hours,
+    w4_filing_status: input.w4_filing_status,
+    w4_two_jobs: input.w4_two_jobs,
+    union_dues_monthly: input.union_dues_monthly,
     optional_fields: input.optional_fields,
   };
 }

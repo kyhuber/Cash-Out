@@ -22,6 +22,7 @@ export type ShiftValues = {
   tips_cash: number | null;
   tips_card: number | null;
   tip_out: number | null;
+  service_charge: number | null;
   total_sales: number | null;
   shift_type: string | null;
   guest_count: number | null;
@@ -253,6 +254,28 @@ export function ShiftFields({
           />
           <FieldError message={errors.tips_cash} />
         </div>
+      </div>
+
+      <div>
+        <label className={label} htmlFor="service_charge">
+          Service charge
+        </label>
+        <input
+          id="service_charge"
+          name="service_charge"
+          type="number"
+          inputMode="decimal"
+          step="0.01"
+          min="0"
+          defaultValue={num(values.service_charge)}
+          placeholder="0.00"
+          className={field}
+        />
+        <p className={hint}>
+          Paid to you on the check and taxed like wages, not like a tip. Leave
+          it blank if there wasn&apos;t one.
+        </p>
+        <FieldError message={errors.service_charge} />
       </div>
 
       {tracks("tip_out") ? (

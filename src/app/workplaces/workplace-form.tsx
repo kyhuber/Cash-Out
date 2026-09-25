@@ -8,6 +8,7 @@ import {
   periodPrefill,
   type Workplace,
 } from "@/lib/workplace";
+import { FILING_STATUSES } from "@/lib/paycheck-taxes";
 import { payPeriodTypesMatching, type PayPeriodType } from "@/lib/pay-period";
 import { deleteWorkplace, type WorkplaceFormState } from "./actions";
 
@@ -253,14 +254,110 @@ export function WorkplaceForm({
                 defaultValue={workplace?.overtime_multiplier ?? 1.5}
                 className={field}
               />
-              <p className={hint}>
-                Usually 1.5. Recorded now — the weekly 40-hour calculation comes
-                later.
-              </p>
+              <p className={hint}>Usually 1.5.</p>
               <FieldError message={errors.overtime_multiplier} />
+
+              <label
+                className={`${label} mt-4`}
+                htmlFor="overtime_daily_threshold_hours"
+              >
+                After how many hours in one shift?
+              </label>
+              <input
+                id="overtime_daily_threshold_hours"
+                name="overtime_daily_threshold_hours"
+                type="number"
+                inputMode="decimal"
+                step="0.25"
+                min="0.25"
+                max="24"
+                defaultValue={workplace?.overtime_daily_threshold_hours ?? 8}
+                className={field}
+              />
+              <p className={hint}>
+                Daily overtime: a 10-hour shift is 8 at your rate and 2 at
+                overtime. Weekly 40-hour overtime isn&apos;t worked out.
+              </p>
+              <FieldError message={errors.overtime_daily_threshold_hours} />
             </div>
           ) : null}
         </div>
+
+        <fieldset className="rounded-xl border border-black/10 dark:border-white/15 p-4">
+          <legend className={`${label} px-1 mb-0`}>Taxes, from your W-4</legend>
+          <p className={`${hint} mt-0 mb-4`}>
+            What this employer withholds depends on the W-4 you gave them. Each
+            job can be different. Social Security, Medicare and the Washington
+            deductions need no settings.
+          </p>
+
+          <div className="flex flex-col gap-4">
+            <div>
+              <label className={label} htmlFor="w4_filing_status">
+                Filing status
+              </label>
+              <select
+                id="w4_filing_status"
+                name="w4_filing_status"
+                defaultValue={workplace?.w4_filing_status ?? "single"}
+                className={field}
+              >
+                {FILING_STATUSES.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+              <FieldError message={errors.w4_filing_status} />
+            </div>
+
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                name="w4_two_jobs"
+                defaultChecked={workplace?.w4_two_jobs ?? false}
+                className="size-5 mt-0.5 accent-current"
+              />
+              <span>
+                <span className="block text-base">
+                  Two-jobs box ticked on this W-4
+                </span>
+                <span className="block text-xs opacity-60">
+                  Step 2(c). Ticked, the employer withholds roughly three
+                  times as much federal tax on the same pay. If a stub shows
+                  federal withholding near zero on a small check, it&apos;s
+                  not ticked.
+                </span>
+              </span>
+            </label>
+
+            <div>
+              <label className={label} htmlFor="union_dues_monthly">
+                Union dues per month
+              </label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-50">
+                  $
+                </span>
+                <input
+                  id="union_dues_monthly"
+                  name="union_dues_monthly"
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0"
+                  defaultValue={workplace?.union_dues_monthly || undefined}
+                  placeholder="0.00"
+                  className={`${field} pl-8`}
+                />
+              </div>
+              <p className={hint}>
+                Taken off the first check of each month. Leave blank if none.
+              </p>
+              <FieldError message={errors.union_dues_monthly} />
+            </div>
+          </div>
+        </fieldset>
 
         <fieldset>
           <legend className={label}>What does this job report?</legend>

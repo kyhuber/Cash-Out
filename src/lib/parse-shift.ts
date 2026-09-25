@@ -116,6 +116,7 @@ MONEY
 - tips_total_unsplit: a tips figure given WITHOUT saying how it split ("220 in tips", "made like 300"). Put the whole figure here and leave tips_card and tips_cash null. Do not split it yourself.
 - If they split it, use tips_card and tips_cash and leave tips_total_unsplit null.
 - tip_out: what they paid out to support staff ("tipped out 35", "35 tipout").
+- service_charge: a service charge, auto-gratuity or event fee the EMPLOYER pays them on the paycheck ("300 service charge", "svc was 300", "plus a 20% service fee that came to 150"). It is taxed as wages, not as a tip, so it never goes in a tips field, and a tips figure never goes here.
 - Bare numbers, no currency symbols. "like 40" is 40. "a buck fifty" in tips is 150, not 1.50 — service tips are dollars.
 
 EXTRA FIELDS
@@ -193,6 +194,7 @@ export function sanitizeParsed(
         ? null
         : tipsTotal,
     tip_out: ifTracked("tip_out", money(parsed.tip_out)),
+    service_charge: money(parsed.service_charge),
     total_sales: ifTracked("total_sales", money(parsed.total_sales)),
     shift_type: ifTracked("shift_type", text(parsed.shift_type)),
     guest_count: ifTracked("guest_count", money(parsed.guest_count)),

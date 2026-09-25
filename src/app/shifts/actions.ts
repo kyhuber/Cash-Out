@@ -59,7 +59,9 @@ async function currentUserWorkplaces() {
   // RLS already scopes this to the user; the select is explicit anyway.
   const { data, error } = await supabase
     .from("workplaces")
-    .select("id, name, hourly_wage, overtime_enabled, overtime_multiplier, optional_fields")
+    .select(
+      "id, name, hourly_wage, overtime_enabled, overtime_multiplier, overtime_daily_threshold_hours, optional_fields",
+    )
     .order("created_at", { ascending: true });
 
   return {
@@ -157,8 +159,27 @@ type WorkplaceRow = {
   hourly_wage: number;
   overtime_enabled: boolean;
   overtime_multiplier: number | null;
+  overtime_daily_threshold_hours: number;
   optional_fields: string[] | null;
 };
+
+/**
+ * The pay terms a shift is saved with, copied from the workplace at that
+ * moment. A later raise or change of overtime terms must never reach
+ * backwards, and a client must never be able to claim terms it didn't earn —
+ * so these come from the workplace row, never from the form.
+ */
+function payTermsSnapshot(workplace: WorkplaceRow) {
+  return {
+    hourly_wage_at_time: workplace.hourly_wage,
+    overtime_multiplier_at_time: workplace.overtime_enabled
+      ? workplace.overtime_multiplier
+      : null,
+    overtime_threshold_at_time: workplace.overtime_enabled
+      ? workplace.overtime_daily_threshold_hours
+      : null,
+  };
+}
 
 /**
  * Reads the shift form. Shared by create and update so the two can never
@@ -191,6 +212,7 @@ function readShiftForm(formData: FormData, workplace: WorkplaceRow) {
     tip_out: enabled.includes("tip_out")
       ? (optionalNumber(formData.get("tip_out")) ?? 0)
       : 0,
+    service_charge: optionalNumber(formData.get("service_charge")) ?? 0,
     optional_field_values: pickTrackedFields(jsonValues, enabled),
     raw_input_text: String(formData.get("raw_input_text") ?? "") || null,
   });
@@ -216,13 +238,7 @@ export async function createShift(
   const { error } = await supabase.from("shifts").insert({
     ...parsed.data,
     user_id: user.id,
-    // Snapshotted from the workplace, never from the form. A later raise must
-    // not rewrite what this shift was worth, and a client must not be able to
-    // claim a wage it didn't earn.
-    hourly_wage_at_time: workplace.hourly_wage,
-    overtime_multiplier_at_time: workplace.overtime_enabled
-      ? workplace.overtime_multiplier
-      : null,
+    ...payTermsSnapshot(workplace),
   });
 
   if (error) return { formError: error.message };
@@ -261,10 +277,11 @@ export async function updateShift(
   const parsed = readShiftForm(formData, workplace);
   if (!parsed.success) return { errors: fieldErrors(parsed.error.issues) };
 
-  // hourly_wage_at_time is deliberately NOT rewritten. It is what this shift
-  // was worth when it was worked; a raise since then must not reach backwards.
-  // Moving a shift to a different workplace is the one case that has to change
-  // it, since the old job's wage is meaningless at the new one.
+  // The pay terms snapshotted on the shift are deliberately NOT rewritten.
+  // They are what this shift was worth when it was worked; a raise since then
+  // must not reach backwards. Moving a shift to a different workplace is the
+  // one case that has to change them, since the old job's terms are
+  // meaningless at the new one.
   const { data: existing } = await supabase
     .from("shifts")
     .select("workplace_id")
@@ -280,14 +297,7 @@ export async function updateShift(
     .from("shifts")
     .update({
       ...parsed.data,
-      ...(movedJobs
-        ? {
-            hourly_wage_at_time: workplace.hourly_wage,
-            overtime_multiplier_at_time: workplace.overtime_enabled
-              ? workplace.overtime_multiplier
-              : null,
-          }
-        : {}),
+      ...(movedJobs ? payTermsSnapshot(workplace) : {}),
     })
     .eq("id", id)
     .eq("user_id", user.id);

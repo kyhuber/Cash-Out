@@ -28,6 +28,8 @@ export const parsedShiftSchema = z.object({
    */
   tips_total_unsplit: z.number().nullable(),
   tip_out: z.number().nullable(),
+  /** Paid by the employer on the check and taxed as wages. Not a tip. */
+  service_charge: z.number().nullable(),
   total_sales: z.number().nullable(),
   shift_type: z.string().nullable(),
   guest_count: z.number().nullable(),
@@ -46,6 +48,7 @@ export const EMPTY_PARSED_SHIFT: ParsedShift = {
   tips_card: null,
   tips_total_unsplit: null,
   tip_out: null,
+  service_charge: null,
   total_sales: null,
   shift_type: null,
   guest_count: null,
@@ -92,6 +95,7 @@ export const shiftSchema = z
     tips_cash: money,
     tips_card: money,
     tip_out: money,
+    service_charge: money,
     optional_field_values: z.record(z.string(), z.union([z.string(), z.number()])),
     raw_input_text: z.string().nullable(),
   })

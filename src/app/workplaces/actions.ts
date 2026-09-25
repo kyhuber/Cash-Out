@@ -11,6 +11,7 @@ import {
   type OptionalFieldKey,
 } from "@/lib/workplace";
 import type { PayPeriodType } from "@/lib/pay-period";
+import { FILING_STATUS_VALUES, type FilingStatus } from "@/lib/paycheck-taxes";
 
 export type WorkplaceFormState = {
   errors?: Record<string, string>;
@@ -42,6 +43,7 @@ function readForm(formData: FormData) {
   );
 
   const tiebreak = String(formData.get("pay_period_type") ?? "");
+  const filingStatus = String(formData.get("w4_filing_status") ?? "");
 
   return {
     name: String(formData.get("name") ?? ""),
@@ -56,6 +58,17 @@ function readForm(formData: FormData) {
     overtime_multiplier: overtimeEnabled
       ? optionalNumber(formData.get("overtime_multiplier"))
       : null,
+    // The threshold input is only rendered while overtime is on; off, the
+    // default keeps the row valid and gives the next switch-on a sane start.
+    overtime_daily_threshold_hours:
+      optionalNumber(formData.get("overtime_daily_threshold_hours")) ?? 8,
+    w4_filing_status: (FILING_STATUS_VALUES as readonly string[]).includes(
+      filingStatus,
+    )
+      ? (filingStatus as FilingStatus)
+      : ("" as FilingStatus),
+    w4_two_jobs: formData.get("w4_two_jobs") === "on",
+    union_dues_monthly: optionalNumber(formData.get("union_dues_monthly")) ?? 0,
     optional_fields: optionalFields,
   };
 }

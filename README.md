@@ -23,9 +23,11 @@ See [`Cash_Out_PRD.md`](./Cash_Out_PRD.md) for the complete product requirements
 In progress. All five MVP features are built: multi-user auth (email-code
 sign-in), workplace setup, conversational shift logging with an editable
 confirmation card, shift history with editing and per-employer filtering, and
-a per-pay-period summary of hours, tips and estimated gross — on top of a
-schema with row-level security and an installable PWA shell. What remains is
-using it against real shifts and real pay stubs.
+a per-paycheck summary that adds up hours, daily overtime, service charge and
+card tips and estimates take-home from each job's W-4 — on top of a schema
+with row-level security and an installable PWA shell. Every shift can be
+downloaded as a CSV. The tax math was built from real pay stubs and its tests
+are those stubs' figures.
 
 ## What's needed from you
 
