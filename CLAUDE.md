@@ -61,7 +61,11 @@ Read `Cash_Out_PRD.md` first — it's the full spec. This file is for the invari
   containing today. A period is paid on the Friday after it ends, so between a
   period closing and its payday the money arriving next belongs to the period
   that already finished. `nextPaycheck` picks the earliest pay date not yet
-  passed; never substitute "the current period" for it.
+  passed; never substitute "the current period" for it. The check AFTER that
+  is one swipe away on the same card, and only while its period has already
+  started (`upcomingPaychecks`) — a check for a period not yet begun could
+  only ever read $0. Checks already paid live on `/paychecks`, six months
+  back, never on the home page.
 - Pay dates are derived as the first Friday STRICTLY after a period ends, not
   as a fixed day-count lag — a twice-monthly period ends on a different weekday
   each time. `pay_date` from the user's stub is kept as a cross-check: if it

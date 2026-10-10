@@ -1,12 +1,21 @@
 import { describe, expect, it } from "vitest";
 import {
   isFirstPayDateOfMonth,
+  monthsBefore,
   nextPaycheck,
+  pastPaychecks,
   shiftsInPeriod,
+  stubPayDateMismatch,
+  upcomingPaychecks,
   summarisePeriod,
   type ShiftRow,
   type SummaryWorkplace,
 } from "./shift-summary";
+
+const addDays = (date: string, days: number) => {
+  const [y, m, d] = date.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+};
 
 const shift = (over: Partial<ShiftRow>): ShiftRow => ({
   id: "s1",
@@ -242,7 +251,7 @@ describe("nextPaycheck", () => {
       pay_period_end_date: "2026-09-13",
       pay_date: "2026-09-21", // a Monday, not the Friday after
     };
-    expect(nextPaycheck([], odd, "2026-09-07").stubPayDateMismatch).toEqual({
+    expect(stubPayDateMismatch(odd)).toEqual({
       recorded: "2026-09-21",
       expected: "2026-09-18",
     });
@@ -254,11 +263,108 @@ describe("nextPaycheck", () => {
       pay_period_end_date: "2026-09-13",
       pay_date: "2026-09-18",
     };
-    expect(nextPaycheck([], ok, "2026-09-07").stubPayDateMismatch).toBeUndefined();
+    expect(stubPayDateMismatch(ok)).toBeUndefined();
   });
 
   it("says nothing when the workplace predates the stored pay date", () => {
-    expect(nextPaycheck([], biweekly, "2026-09-07").stubPayDateMismatch).toBeUndefined();
+    expect(stubPayDateMismatch(biweekly)).toBeUndefined();
+  });
+});
+
+describe("upcomingPaychecks", () => {
+  /**
+   * The case this exists for: on Sep 15 a shift worked tonight falls in
+   * Sep 14-27, which isn't paid on the next check (Sep 18) but the one after.
+   */
+  it("shows the check after next while the next one's period has closed", () => {
+    const checks = upcomingPaychecks(
+      [shift({ shift_date: "2026-09-15", tips_card: 50 })],
+      biweekly,
+      "2026-09-15",
+    );
+    expect(checks.map((c) => c.payDate)).toEqual(["2026-09-18", "2026-10-02"]);
+    expect(checks[0].periodClosed).toBe(true);
+    expect(checks[1].periodClosed).toBe(false);
+    expect(checks[1].summary.shifts).toBe(1);
+  });
+
+  it("shows only one once the next check is for the period containing today", () => {
+    // Sep 19: Sep 18 is paid, so next is Oct 2 for Sep 14-27. The check after
+    // that would pay Sep 28-Oct 11, which hasn't started and can only be $0.
+    const checks = upcomingPaychecks([], biweekly, "2026-09-19");
+    expect(checks.map((c) => c.payDate)).toEqual(["2026-10-02"]);
+  });
+
+  it("always includes the period containing today, across a year of days", () => {
+    for (const type of ["weekly", "biweekly", "semi_monthly", "monthly"] as const) {
+      const w: SummaryWorkplace = { ...biweekly, pay_period_type: type };
+      let today = "2026-01-01";
+      for (let i = 0; i < 365; i++) {
+        const checks = upcomingPaychecks([], w, today);
+        expect(checks.length, `${type} ${today}`).toBeGreaterThanOrEqual(1);
+        expect(checks.length, `${type} ${today}`).toBeLessThanOrEqual(2);
+        expect(
+          checks.some((c) => c.period.start <= today && today <= c.period.end),
+          `${type} ${today}`,
+        ).toBe(true);
+        expect(checks[0].payDate >= today).toBe(true);
+        today = addDays(today, 1);
+      }
+    }
+  });
+});
+
+describe("pastPaychecks", () => {
+  it("lists checks already paid, newest first, with empty periods kept", () => {
+    const shifts = [
+      shift({ id: "a", shift_date: "2026-08-31", tips_card: 10 }),
+      shift({ id: "b", shift_date: "2026-09-28", tips_card: 20 }),
+    ];
+    // Oct 10: Oct 16 (for Sep 28-Oct 11) is still to come.
+    const checks = pastPaychecks(shifts, biweekly, "2026-10-10");
+    expect(checks.map((c) => c.payDate)).toEqual(["2026-10-02", "2026-09-18"]);
+    // Sep 14-27 had nothing logged, and still shows as a check.
+    expect(checks[0].summary.shifts).toBe(0);
+    expect(checks[1].summary.shifts).toBe(1);
+  });
+
+  it("starts from the first period with a shift in it", () => {
+    const checks = pastPaychecks(
+      [shift({ shift_date: "2026-09-20" })],
+      biweekly,
+      "2026-12-01",
+    );
+    expect(checks[checks.length - 1].period.start).toBe("2026-09-14");
+  });
+
+  it("stops six months back", () => {
+    const shifts = [shift({ shift_date: "2025-06-01" })];
+    const checks = pastPaychecks(shifts, biweekly, "2026-10-10");
+    expect(checks.every((c) => c.payDate >= "2026-04-10")).toBe(true);
+    expect(checks[checks.length - 1].payDate < "2026-04-24").toBe(true);
+  });
+
+  it("never overlaps the upcoming checks", () => {
+    const shifts = [shift({ shift_date: "2026-05-01" })];
+    let today = "2026-09-01";
+    for (let i = 0; i < 60; i++) {
+      const past = pastPaychecks(shifts, biweekly, today).map((c) => c.payDate);
+      const next = upcomingPaychecks(shifts, biweekly, today)[0].payDate;
+      expect(past.every((d) => d < today && d < next), today).toBe(true);
+      today = addDays(today, 1);
+    }
+  });
+
+  it("is empty for a workplace with nothing logged", () => {
+    expect(pastPaychecks([], biweekly, "2026-10-10")).toEqual([]);
+  });
+});
+
+describe("monthsBefore", () => {
+  it("steps back calendar months, clamping to the month's last day", () => {
+    expect(monthsBefore("2026-10-10", 6)).toBe("2026-04-10");
+    expect(monthsBefore("2026-08-31", 6)).toBe("2026-02-28");
+    expect(monthsBefore("2026-03-15", 6)).toBe("2025-09-15");
   });
 });
 

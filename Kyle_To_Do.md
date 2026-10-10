@@ -6,9 +6,11 @@ keys, pay stubs) and decisions only you can make.
 Claude maintains this file. It gets rewritten whenever an action is completed or
 a decision is made, so the top section is always what's actually blocking.
 
-**Last updated:** September 25, 2026 — **service charge, daily overtime,
-take-home estimate and CSV export are built and in a pull request.** Once it
-merges, there are settings only you can fill in. Steps below.
+**Last updated:** October 10, 2026 — **upcoming and past paychecks are built**
+on branch `claude/paycheck-visibility-periods-9omnk6`. The home card now
+swipes to the check after next, and a "Past paychecks" link opens the last six
+months. Nothing new is needed from you: no migration, no settings. Older items
+below are unchanged.
 
 ---
 
@@ -197,6 +199,8 @@ Kept so we don't relitigate them. Say the word if you want any reopened.
 | Scope | Log shift data, keep it available to look at, calculate what a paycheck should look like. No analytics, trends, projections or comparisons — and nothing built speculatively for later | Sep 7 |
 | Headline of the app | The next paycheck per job, above the logger. Not the period containing today — those differ for several days each cycle | Sep 7 |
 | Pay date rule | The first Friday strictly after a period ends. No holiday or weekend shifting for now | Sep 7 |
+| Check after next | One swipe left on that job's card, shown only once its period has started — otherwise it could only read $0. Dots and a peeking edge show it's there | Oct 10 |
+| Past paychecks | Their own page, linked quietly from the home card. Six months back, newest first, per job. Periods with nothing logged are kept as muted $0 rows, since a gap may be a missed shift | Oct 10 |
 | Open vs closed periods | An open period's figure is labelled "so far" and never extrapolated to what the finished period might total | Sep 7 |
 | Database password | Rotated after a fragment leaked into a public Actions log; migrations now connect via env vars instead of a URL so this class of leak can't recur | Sep 7 |
 | Keeping the free database awake | The migration workflow also runs Mon/Thu on a schedule — a real query twice a week, comfortably inside Supabase's 7-day pause window | Sep 22 |
