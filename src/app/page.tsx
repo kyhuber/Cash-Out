@@ -9,21 +9,23 @@ import {
   WorkplaceRows,
   type RowWorkplace,
 } from "@/app/workplaces/workplace-rows";
+import { UpcomingPaychecks } from "@/app/paychecks/upcoming-paychecks";
 import {
-  NextPaychecks,
-  type PaycheckWorkplace,
-} from "@/app/paychecks/next-paychecks";
+  SHIFT_COLUMNS,
+  toPaycheckWorkplace,
+  toShiftRow,
+} from "@/app/paychecks/rows";
 import type { ShiftRow } from "@/lib/shift-summary";
 import type { OptionalFieldKey } from "@/lib/workplace";
-import type { DateOnly, PayPeriodType } from "@/lib/pay-period";
-import type { FilingStatus } from "@/lib/paycheck-taxes";
+import type { PayPeriodType } from "@/lib/pay-period";
 
 export const dynamic = "force-dynamic";
 
 /**
  * How far back to load. Everything on this page — the recent list and each
- * workplace's current-period totals — is served from this one query, and no
- * pay period is longer than a month, so 90 days covers both with room to spare.
+ * workplace's upcoming checks — is served from this one query, and no pay
+ * period is longer than a month, so 90 days covers both with room to spare.
+ * Past checks have their own page and their own, longer query.
  */
 const WINDOW_DAYS = 90;
 
@@ -42,9 +44,7 @@ async function loadRecentShifts(
 
   return supabase
     .from("shifts")
-    .select(
-      "id, workplace_id, station, shift_date, clock_in, clock_out, minutes_worked, tips_cash, tips_card, tip_out, service_charge, hourly_wage_at_time, overtime_multiplier_at_time, overtime_threshold_at_time",
-    )
+    .select(SHIFT_COLUMNS)
     .gte("shift_date", since)
     .order("shift_date", { ascending: false })
     .order("clock_in", { ascending: false });
@@ -79,30 +79,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   const hasWorkplaces = !!workplaces && workplaces.length > 0;
   const stations = hasWorkplaces ? await knownStations(supabase) : {};
 
-  // Postgres numerics arrive as strings over PostgREST; coerce once, here, so
-  // nothing downstream has to remember to.
-  const shifts: ShiftRow[] = (shiftRows ?? []).map((s) => ({
-    id: s.id,
-    workplace_id: s.workplace_id,
-    station: s.station,
-    shift_date: s.shift_date,
-    clock_in: String(s.clock_in).slice(0, 5),
-    clock_out: String(s.clock_out).slice(0, 5),
-    minutes_worked: Number(s.minutes_worked),
-    tips_cash: Number(s.tips_cash),
-    tips_card: Number(s.tips_card),
-    tip_out: Number(s.tip_out),
-    service_charge: Number(s.service_charge),
-    hourly_wage_at_time: Number(s.hourly_wage_at_time),
-    overtime_multiplier_at_time:
-      s.overtime_multiplier_at_time === null
-        ? null
-        : Number(s.overtime_multiplier_at_time),
-    overtime_threshold_at_time:
-      s.overtime_threshold_at_time === null
-        ? null
-        : Number(s.overtime_threshold_at_time),
-  }));
+  const shifts: ShiftRow[] = (shiftRows ?? []).map(toShiftRow);
 
   const forLogger: LoggerWorkplace[] = (workplaces ?? []).map((w) => ({
     id: w.id,
@@ -118,17 +95,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     pay_period_type: w.pay_period_type as PayPeriodType,
   }));
 
-  const forPaychecks: PaycheckWorkplace[] = (workplaces ?? []).map((w) => ({
-    id: w.id,
-    name: w.name,
-    pay_period_type: w.pay_period_type as PayPeriodType,
-    pay_period_anchor_date: (w.pay_period_anchor_date ?? null) as DateOnly | null,
-    pay_period_end_date: (w.pay_period_end_date ?? null) as DateOnly | null,
-    pay_date: (w.pay_date ?? null) as DateOnly | null,
-    w4_filing_status: w.w4_filing_status as FilingStatus,
-    w4_two_jobs: Boolean(w.w4_two_jobs),
-    union_dues_monthly: Number(w.union_dues_monthly ?? 0),
-  }));
+  const forPaychecks = (workplaces ?? []).map(toPaycheckWorkplace);
 
   const workplaceNames = new Map(
     (workplaces ?? []).map((w) => [w.id, w.name] as const),
@@ -161,7 +128,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
             </p>
           </section>
         ) : (
-          <NextPaychecks workplaces={forPaychecks} shifts={shifts} />
+          <UpcomingPaychecks workplaces={forPaychecks} shifts={shifts} />
         )
       ) : null}
 
