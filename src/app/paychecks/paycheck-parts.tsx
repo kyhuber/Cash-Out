@@ -114,15 +114,26 @@ export function HowItAddsUp({ check }: { check: Paycheck }) {
   );
 }
 
-/** "about $701.20 after tax and dues", or nothing when there are no tables. */
-export function AfterTax({ check }: { check: Paycheck }) {
-  if (!check.takeHome) return null;
+/**
+ * The big number on a paycheck: estimated take-home, because the deposit is
+ * what a worker actually sees. Gross only leads when the year has no tax
+ * tables, and HeadlineNote says so.
+ */
+export function headlineAmount(check: Paycheck): number {
+  return check.takeHome ? check.takeHome.net : check.summary.gross;
+}
+
+/**
+ * What the headline is, and gross beside it for holding against a stub's top
+ * line: "estimated take-home · $912.40 gross", or "gross · no 2027 tax rates
+ * yet" when there is nothing to estimate with.
+ */
+export function HeadlineNote({ check }: { check: Paycheck }) {
   return (
     <p className="text-sm opacity-70 tabular-nums">
-      about {money(check.takeHome.net)} after tax
-      {check.takeHome.deductions.some((d) => d.key === "union_dues")
-        ? " and dues"
-        : ""}
+      {check.takeHome
+        ? `estimated take-home · ${money(check.summary.gross)} gross`
+        : `gross · no ${check.payDate.slice(0, 4)} tax rates yet`}
     </p>
   );
 }

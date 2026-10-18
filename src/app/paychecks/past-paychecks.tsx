@@ -8,10 +8,11 @@ import {
   type ShiftRow,
 } from "@/lib/shift-summary";
 import {
-  AfterTax,
+  HeadlineNote,
   HowItAddsUp,
   PaycheckCaveats,
   PeriodLine,
+  headlineAmount,
   money,
   payDateLabel,
   periodLabel,
@@ -68,7 +69,7 @@ export function PastPaychecks({
                         {payDateLabel(check.payDate)}
                       </span>
                       <span className="text-lg font-semibold tabular-nums">
-                        {money(check.summary.gross)}
+                        {money(headlineAmount(check))}
                       </span>
                     </div>
                     {check.summary.shifts === 0 ? (
@@ -80,7 +81,7 @@ export function PastPaychecks({
                       </p>
                     ) : (
                       <>
-                        <AfterTax check={check} />
+                        <HeadlineNote check={check} />
                         <PeriodLine check={check} showOpen={false} />
                         <HowItAddsUp check={check} />
                       </>
@@ -96,11 +97,11 @@ export function PastPaychecks({
       <div className="mt-8">
         <PaycheckCaveats />
         {/* The wage is stored on each shift, so gross never moves. The W-4 is
-            not, so a change there re-estimates every check on this page. */}
+            not, so a change there re-estimates every headline on this page. */}
         <p className="mt-2 text-xs opacity-60">
           Take-home on past checks uses each job&apos;s W-4 settings as they
           are now. If you&apos;ve changed them since, an older estimate will
-          have changed with them.
+          have changed with them; the gross under it won&apos;t have.
         </p>
       </div>
     </>
