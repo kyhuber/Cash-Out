@@ -72,12 +72,19 @@ Read `Cash_Out_PRD.md` first — it's the full spec. This file is for the invari
   disagrees with the rule, say so rather than silently overriding either.
 - A paycheck figure for an open period is labelled "so far". It can still grow,
   and nothing extrapolates it — shifts not yet worked are not guessed at.
-- The pay-period summary's headline number is what lands ON THE CHECK:
-  regular hours x wage + daily overtime + service charge + card tips. Cash tips
-  are tracked but never in that figure — neither employer puts them on the
-  check, so a figure that included them could never match a stub. They are
-  shown separately as money already taken home. Tip-out is never subtracted
-  from it either; it happens afterwards, out of pocket.
+- A paycheck's headline number is the ESTIMATED TAKE-HOME — the deposit is
+  what a worker actually sees, and gross is the fine print on a stub. Gross
+  sits directly under it, smaller, because gross is the line to hold against
+  a stub's top line. When the pay date's year has no tax tables, the headline
+  falls back to gross and says so; it never goes blank and never borrows
+  another year (`headlineAmount` / `HeadlineNote` in
+  `src/app/paychecks/paycheck-parts.tsx`).
+- Gross is what lands ON THE CHECK: regular hours x wage + daily overtime +
+  service charge + card tips. Cash tips are tracked but never in gross or
+  take-home — neither employer puts them on the check, so a figure that
+  included them could never match a stub. They are shown separately as money
+  already taken home. Tip-out is never subtracted from either; it happens
+  afterwards, out of pocket.
 - Overtime is DAILY: hours past `overtime_daily_threshold_hours` in ONE SHIFT
   are paid at the multiplier. Both are snapshotted onto the shift
   (`overtime_multiplier_at_time`, `overtime_threshold_at_time`) for the same

@@ -6,22 +6,22 @@ keys, pay stubs) and decisions only you can make.
 Claude maintains this file. It gets rewritten whenever an action is completed or
 a decision is made, so the top section is always what's actually blocking.
 
-**Last updated:** October 10, 2026 — **upcoming and past paychecks are built**
-on branch `claude/paycheck-visibility-periods-9omnk6`. The home card now
-swipes to the check after next, and a "Past paychecks" link opens the last six
-months. Nothing new is needed from you: no migration, no settings. Older items
-below are unchanged.
+**Last updated:** October 18, 2026 — **paychecks now lead with take-home.**
+Every paycheck card, on the home page and on Past paychecks, shows estimated
+take-home as the big number, with gross in small type under it. No migration,
+no settings. Your Oct 17 Delaware North stub was checked against the app: the
+gap was the hours and an $8 service charge logged slightly differently from
+the stub, not the tax math, so the estimate stays as it is.
 
 ---
 
 # Do these next
 
-## 1. Merge the pull request
+## 1. Merge the take-home headline pull request
 
-The migration runs on its own when it lands on `main` (the migrate workflow).
-Nothing to paste into the SQL editor.
+Nothing else to do — no migration, no settings.
 
-## 2. Fill in each workplace's new settings (about 2 minutes)
+## 2. Fill in each workplace's W-4 settings, if not already done (about 2 minutes)
 
 Home page → Workplaces → **Edit** on each. Three new things on the form, all
 read off your stubs:
@@ -104,7 +104,8 @@ domain at it via DNS.** Only if you decide to do it:
 - **Every shift row shows how it adds up**: `$306.36 pay · 2 hrs OT · $861.29
   tips` under the name, with the shift's total on the right instead of just
   the tips. Opening a shift shows the full arithmetic, line by line.
-- **The paycheck card** shows gross, then "about $X after tax" under it, with
+- **The paycheck card** shows gross, then "about $X after tax" under it
+  (since Oct 18 the other way round: take-home leads), with
   a tap-to-open breakdown: hours at your rate, overtime, service charge, card
   tips, gross, then each deduction and estimated take-home.
 - **Daily overtime**: 1.5× after 8 hours in one shift, at both jobs. The rate
@@ -138,9 +139,13 @@ card against the next two stubs, and telling me anything that's off.
 
 # 📋 Later — not blocking
 
-**2027 tax tables** — needed in January. Federal brackets, the standard
-deduction and the WA paid-leave rate all change; I'll transcribe them and check
-against your first 2027 stub. Send that stub when it arrives.
+**2027 tax tables** — needed by mid-December, not January. Withholding goes by
+pay date, so the first check paid in 2027 appears on the home page as soon as
+its period starts in December. Until the tables are in, that card's headline
+falls back to gross and says "no 2027 tax rates yet". Federal brackets, the
+standard deduction and the WA paid-leave rate all change; I'll transcribe them
+once published and check against your first 2027 stub. Send that stub when it
+arrives.
 
 **Friends** — self-serve signup, or do you provision accounts?
 *My lean: self-serve.*
@@ -205,7 +210,8 @@ Kept so we don't relitigate them. Say the word if you want any reopened.
 | Database password | Rotated after a fragment leaked into a public Actions log; migrations now connect via env vars instead of a URL so this class of leak can't recur | Sep 7 |
 | Keeping the free database awake | The migration workflow also runs Mon/Thu on a schedule — a real query twice a week, comfortably inside Supabase's 7-day pause window | Sep 22 |
 | Backend platform, after the pause scare | Staying on Supabase rather than paying for Pro or moving to Firebase | Sep 22 |
-| Paycheck headline number | What lands on the check: regular hours × wage + daily overtime + service charge + card tips. Gross leads, take-home under it | Sep 25 |
+| Paycheck headline number | Estimated take-home — the deposit is what you actually see. Gross (regular hours × wage + daily overtime + service charge + card tips) sits under it in small type, for holding against a stub. A year with no tax tables falls back to gross and says so. Replaces Sep 25's gross-first layout | Oct 18 |
+| Stub that didn't match (Oct 17, Delaware North) | The gap was logged hours and an $8 service charge differing from the stub — data, not math. Tax estimate left as is | Oct 18 |
 | Cash tips | Still tracked and counted in what a shift earned, but not in the paycheck figure — they're not on either employer's check | Sep 25 |
 | Service charge | A box on every shift at every job. Pay from the employer, taxed as wages, never a tip | Sep 25 |
 | Overtime | Daily: 1.5× after 8 hours in one shift, at both jobs. Weekly 40-hour overtime not modelled. Threshold stored per workplace and snapshotted on each shift | Sep 25 |
@@ -236,7 +242,7 @@ Kept so we don't relitigate them. Say the word if you want any reopened.
 - **Shift history:** recent shifts newest-first, filterable by employer, each
   showing how its pay adds up and tappable to edit or delete. Editing never
   rewrites the wage or overtime terms a shift was worked at.
-- **Next paycheck**, leading the home page: gross and estimated take-home, the
+- **Next paycheck**, leading the home page: estimated take-home, gross under it, the
   Friday it lands, and a line-by-line breakdown, for each job, with the period
   marked closed or still open.
 - **Tax math** built from four real stubs and tested against their figures.

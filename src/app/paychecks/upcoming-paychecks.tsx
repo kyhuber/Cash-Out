@@ -10,10 +10,11 @@ import {
   type ShiftRow,
 } from "@/lib/shift-summary";
 import {
-  AfterTax,
+  HeadlineNote,
   HowItAddsUp,
   PaycheckCaveats,
   PeriodLine,
+  headlineAmount,
   money,
   payDateLabel,
   subscribeToNothing,
@@ -41,7 +42,7 @@ function CheckCard({
       </div>
 
       <p className="mt-1 text-3xl font-semibold tracking-tight tabular-nums">
-        {money(check.summary.gross)}
+        {money(headlineAmount(check))}
         {/* An open period can still grow, and saying so is the difference
             between a running total and a claim about a final figure. */}
         {check.periodClosed ? null : (
@@ -49,9 +50,9 @@ function CheckCard({
         )}
       </p>
 
-      {/* Net sits right under gross, smaller. Gross is the figure to hold
-          against the stub's top line; net is what should reach the bank. */}
-      <AfterTax check={check} />
+      {/* Take-home leads because it is what reaches the bank. Gross sits
+          under it, smaller: the figure to hold against a stub's top line. */}
+      <HeadlineNote check={check} />
       <PeriodLine check={check} />
 
       {check.summary.shifts === 0 ? (
