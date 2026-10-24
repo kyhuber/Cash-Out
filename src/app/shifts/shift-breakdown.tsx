@@ -12,7 +12,12 @@ export const money = (n: number) =>
  * than a wrong total.
  */
 export function ShiftBreakdown({ pay, wage }: { pay: ShiftPay; wage: number }) {
-  const line = (label: string, amount: number, strong = false) => (
+  const line = (
+    label: string,
+    amount: number,
+    strong = false,
+    negative = false,
+  ) => (
     <div
       key={label}
       className={
@@ -21,7 +26,10 @@ export function ShiftBreakdown({ pay, wage }: { pay: ShiftPay; wage: number }) {
       }
     >
       <span className="text-sm">{label}</span>
-      <span className="text-sm">{money(amount)}</span>
+      <span className="text-sm">
+        {negative ? "−" : ""}
+        {money(amount)}
+      </span>
     </div>
   );
 
@@ -36,6 +44,7 @@ export function ShiftBreakdown({ pay, wage }: { pay: ShiftPay; wage: number }) {
         : null}
       {pay.serviceCharge > 0 ? line("Service charge", pay.serviceCharge) : null}
       {line("Card tips", pay.tipsCard)}
+      {pay.tipOut > 0 ? line("Tipped out", pay.tipOut, false, true) : null}
       {line("On the paycheck", pay.onCheck, true)}
       {line("Cash tips, taken home", pay.tipsCash)}
       <div className="mt-1 border-t border-black/10 dark:border-white/15 pt-1">

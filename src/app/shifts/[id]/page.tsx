@@ -78,6 +78,7 @@ export default async function EditShiftPage({
     overtime_threshold_at_time: num(shift.overtime_threshold_at_time),
     tips_cash: Number(shift.tips_cash),
     tips_card: Number(shift.tips_card),
+    tip_out: Number(shift.tip_out),
     service_charge: Number(shift.service_charge),
   });
 

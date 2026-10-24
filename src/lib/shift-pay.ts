@@ -8,6 +8,7 @@ export type ShiftPayInput = {
   overtime_threshold_at_time: number | null;
   tips_cash: number;
   tips_card: number;
+  tip_out: number;
   service_charge: number;
 };
 
@@ -23,15 +24,20 @@ export type ShiftPay = {
   /** Overtime hours x overtime rate. */
   overtime: number;
   serviceCharge: number;
+  /** Card tips as earned, BEFORE tip-out. */
   tipsCard: number;
   tipsCash: number;
+  /** Paid out to support staff, taken off the card tips on the check. */
+  tipOut: number;
   /**
    * What lands on the paycheck for this shift: wages + overtime + service
-   * charge + card tips. Cash tips are NOT here — neither employer puts them on
-   * the check, and the check is what this figure is held against.
+   * charge + card tips - tip-out. The employer takes tip-out off the card tips
+   * before paying them, so $800 in card tips with a $40 tip-out is $760 on the
+   * stub. Cash tips are NOT here — neither employer puts them on the check,
+   * and the check is what this figure is held against.
    */
   onCheck: number;
-  /** Everything the shift earned, cash tips included. */
+  /** Everything the shift earned after tip-out, cash tips included. */
   earned: number;
 };
 
@@ -73,7 +79,8 @@ export function shiftPay(s: ShiftPayInput): ShiftPay {
   const serviceCharge = round2(s.service_charge);
   const tipsCard = round2(s.tips_card);
   const tipsCash = round2(s.tips_cash);
-  const onCheck = round2(wages + overtime + serviceCharge + tipsCard);
+  const tipOut = round2(s.tip_out);
+  const onCheck = round2(wages + overtime + serviceCharge + tipsCard - tipOut);
 
   return {
     hours,
@@ -85,6 +92,7 @@ export function shiftPay(s: ShiftPayInput): ShiftPay {
     serviceCharge,
     tipsCard,
     tipsCash,
+    tipOut,
     onCheck,
     earned: round2(onCheck + tipsCash),
   };

@@ -24,7 +24,7 @@ export const OPTIONAL_FIELDS = [
     hint: "Which bar inside the venue — same wage, different tips",
   },
   { key: "total_sales", label: "Total sales", hint: "Not every job reports this" },
-  { key: "tip_out", label: "Tip-out paid", hint: "What you paid out to support staff" },
+  { key: "tip_out", label: "Tip-out paid", hint: "What you paid out to support staff — comes off your card tips on the check" },
   { key: "shift_type", label: "Event type", hint: "Concert, game, private event" },
   { key: "guest_count", label: "Number of guests", hint: "Covers served" },
   { key: "notes", label: "Notes", hint: "Anything worth remembering" },

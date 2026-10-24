@@ -6,25 +6,29 @@ keys, pay stubs) and decisions only you can make.
 Claude maintains this file. It gets rewritten whenever an action is completed or
 a decision is made, so the top section is always what's actually blocking.
 
-**Last updated:** October 18, 2026 — **paychecks now lead with take-home.**
-Every paycheck card, on the home page and on Past paychecks, shows estimated
-take-home as the big number, with gross in small type under it. No migration,
-no settings. Your Oct 17 Delaware North stub was checked against the app: the
-gap was the hours and an $8 service charge logged slightly differently from
-the stub, not the tax math, so the estimate stays as it is.
+**Last updated:** October 24, 2026 — **tip-out now comes off card tips on
+the paycheck.** You confirmed Lumen pays card tips net of tip-out ($800 in
+tips with a $40 tip-out shows as $760 on the stub), so the app now does the
+same. Keep logging tips as you earned them, with the tip-out separately; the
+app does the subtracting. Your Oct 23 Lumen check ($1,539.36 deposited vs
+$1,713.34 estimated) was checked line by line: the tax math is right, and the
+gap was a W-4 setting, union dues, and the logged shifts (below).
 
 ---
 
 # Do these next
 
-## 1. Merge the take-home headline pull request
+## 1. Merge the tip-out pull request
 
 Nothing else to do — no migration, no settings.
 
-## 2. Fill in each workplace's W-4 settings, if not already done (about 2 minutes)
+## 2. Tick the two-jobs box on Lumen Field (about 1 minute)
 
-Home page → Workplaces → **Edit** on each. Three new things on the form, all
-read off your stubs:
+**Confirmed still missing by your Oct 23 check.** The app withheld $163.78
+federal; Lumen withheld $270.61. That's exactly the difference the two-jobs
+box makes, about **$120 too high** on every Lumen estimate until it's ticked.
+
+Home page → Workplaces → **Edit** on each:
 
 | Setting | Lumen Field | Climate Pledge Arena |
 |---|---|---|
@@ -32,18 +36,34 @@ read off your stubs:
 | Filing status | Single | Single |
 | Two-jobs box ticked on this W-4 | **✅ yes** | ❌ no |
 | Union dues per month | **$33** | blank |
+| Tracked fields | **Tip-out on** | tip-out not needed |
 
 How I know: Lumen's federal withholding only reproduces with the two-jobs box
-ticked (it withheld $99.87 on $1,181.58), and Climate Pledge's only
-reproduces with it unticked ($0 on $240.51, $26.35 on $568.95). The $33 dues
-came off your Sep 11 Lumen check and not your Sep 25 one, so it's once a
-month, first check of the month.
+ticked (it withheld $99.87 on $1,181.58, and $270.61 on $2,001.89), and
+Climate Pledge's only reproduces with it unticked ($0 on $240.51, $26.35 on
+$568.95). The setting is read live, so the Oct 23 card corrects itself as
+soon as you save.
 
-Until you save these, take-home is estimated as if both jobs were a plain
-single W-4 with no dues — so Lumen will read a little high until step 2 is
-done.
+## 3. Tell me the union dues on your Oct 9 Lumen stub
 
-## 3. Check one existing shift over 8 hours
+Your Oct 23 check took **$11** in dues. The app expected none: it takes $33
+off the first check of each month only, which was Oct 9. If Oct 9 shows $22,
+Lumen is splitting the $33 across the month's checks; if $33, the $11 is
+something else (an increase, a catch-up). I'll fix the rule once I know.
+
+## 4. Correct the two Oct 3–16 Lumen shifts against the stub
+
+The stub paid **19.22 hours** (16.00 regular + 3.22 overtime); the app has
+18.8, so about 25 minutes is missing across the two shifts — Lumen's punch
+clock caught more than the times you logged.
+
+Card tips on the stub, already net of tip-out: **$668.04** (earlier shift)
+and **$753.72** (later shift). For each shift, card tips you logged minus the
+tip-out you logged should equal that figure. You logged $1,501.00 in card
+tips and $35 of tip-out, so about **$44.24** is still unexplained — most
+likely an unrecorded tip-out on the earlier shift.
+
+## 5. Check one existing shift over 8 hours
 
 Any shift you'd already logged at a job with overtime switched *on* now gets
 overtime after 8 hours automatically (the migration fills the threshold in).
@@ -179,7 +199,7 @@ Kept so we don't relitigate them. Say the word if you want any reopened.
 | Google sign-in | Added alongside the code, not instead of it — the code stays as the no-Google-account fallback | Sep 23 |
 | Shifts store the wage they were worked at | Yes — a raise won't rewrite history. Overtime terms are stored the same way | Aug 29, Sep 25 |
 | Overnight shifts | Belong to the date they started; duration wraps 24h | Aug 29 |
-| Tip-out | Tracked, so both gross and take-home can be shown | Aug 29 |
+| Tip-out | Taken off card tips on the paycheck — Lumen pays card tips net of it ($800 tips, $40 tip-out → $760 on the stub). Tips are logged as earned, tip-out separately; the app subtracts. One rule for every job, since no tip-out is recorded at Climate Pledge. Replaces Aug 29's "paid out of pocket, never on the check" | Oct 24 |
 | Framework | Next.js 16 + Supabase + Vercel | Aug 29 |
 | Service worker | Skipped — iOS doesn't need it, and stale caches would risk showing wrong numbers | Aug 29 |
 | Separate `users` table | Skipped — Supabase's `auth.users` already has it | Aug 29 |
@@ -210,7 +230,8 @@ Kept so we don't relitigate them. Say the word if you want any reopened.
 | Database password | Rotated after a fragment leaked into a public Actions log; migrations now connect via env vars instead of a URL so this class of leak can't recur | Sep 7 |
 | Keeping the free database awake | The migration workflow also runs Mon/Thu on a schedule — a real query twice a week, comfortably inside Supabase's 7-day pause window | Sep 22 |
 | Backend platform, after the pause scare | Staying on Supabase rather than paying for Pro or moving to Firebase | Sep 22 |
-| Paycheck headline number | Estimated take-home — the deposit is what you actually see. Gross (regular hours × wage + daily overtime + service charge + card tips) sits under it in small type, for holding against a stub. A year with no tax tables falls back to gross and says so. Replaces Sep 25's gross-first layout | Oct 18 |
+| Paycheck headline number | Estimated take-home — the deposit is what you actually see. Gross (regular hours × wage + daily overtime + service charge + card tips − tip-out) sits under it in small type, for holding against a stub. A year with no tax tables falls back to gross and says so. Replaces Sep 25's gross-first layout | Oct 18 |
+| Stub that didn't match (Oct 23, Lumen) | $173.98 under the estimate. Tax math correct to the cent; the gap was the two-jobs box unticked (≈$120), $11 union dues the rule didn't expect, and logged hours and tips differing from the stub | Oct 24 |
 | Stub that didn't match (Oct 17, Delaware North) | The gap was logged hours and an $8 service charge differing from the stub — data, not math. Tax estimate left as is | Oct 18 |
 | Cash tips | Still tracked and counted in what a shift earned, but not in the paycheck figure — they're not on either employer's check | Sep 25 |
 | Service charge | A box on every shift at every job. Pay from the employer, taxed as wages, never a tip | Sep 25 |
@@ -242,6 +263,9 @@ Kept so we don't relitigate them. Say the word if you want any reopened.
 - **Shift history:** recent shifts newest-first, filterable by employer, each
   showing how its pay adds up and tappable to edit or delete. Editing never
   rewrites the wage or overtime terms a shift was worked at.
+- **Take-home headline** merged (Oct 18).
+- **Tip-out** comes off card tips on the paycheck, on each shift's breakdown,
+  the paycheck card and the CSV's on-paycheck column (Oct 24).
 - **Next paycheck**, leading the home page: estimated take-home, gross under it, the
   Friday it lands, and a line-by-line breakdown, for each job, with the period
   marked closed or still open.

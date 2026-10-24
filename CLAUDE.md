@@ -80,11 +80,17 @@ Read `Cash_Out_PRD.md` first — it's the full spec. This file is for the invari
   another year (`headlineAmount` / `HeadlineNote` in
   `src/app/paychecks/paycheck-parts.tsx`).
 - Gross is what lands ON THE CHECK: regular hours x wage + daily overtime +
-  service charge + card tips. Cash tips are tracked but never in gross or
-  take-home — neither employer puts them on the check, so a figure that
-  included them could never match a stub. They are shown separately as money
-  already taken home. Tip-out is never subtracted from either; it happens
-  afterwards, out of pocket.
+  service charge + card tips - tip-out. Cash tips are tracked but never in
+  gross or take-home — neither employer puts them on the check, so a figure
+  that included them could never match a stub. They are shown separately as
+  money already taken home.
+- Tip-out comes OFF THE CARD TIPS on the check. Lumen pays card tips net of
+  it: $800 in card tips with a $40 tip-out is $760 on the stub (Kyle, Oct 24;
+  he records no tip-out at Climate Pledge, so one rule covers every shift).
+  Tips are always recorded as EARNED, before tip-out, and tip-out in its own
+  field — the parser must never net them itself, or it comes off twice. This
+  reverses the earlier assumption that tip-out was paid in cash out of
+  pocket; a real Oct 23 stub disproved it.
 - Overtime is DAILY: hours past `overtime_daily_threshold_hours` in ONE SHIFT
   are paid at the multiplier. Both are snapshotted onto the shift
   (`overtime_multiplier_at_time`, `overtime_threshold_at_time`) for the same

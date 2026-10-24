@@ -73,7 +73,7 @@ When a user adds a workplace, they enter:
 - Tap into any entry to edit or delete it.
 
 ### 6.5 Pay-Period Summary
-- For each workplace and pay period: total hours worked, total tips (cash + card), and an estimated gross pay figure (hours × wage, tips added — overtime multiplier applied if flagged, using the simple flat-rate assumption, not full weekly-threshold logic).
+- For each workplace and pay period: total hours worked, total tips (cash + card), and an estimated gross pay figure (hours × wage, card tips added less any tip-out, which the employer takes off them before paying — overtime multiplier applied if flagged, using the simple flat-rate assumption, not full weekly-threshold logic).
 - This is what the user holds up against their actual pay stub. In v1, *they* do the comparison — the app doesn't do it for them yet.
 
 ## 7. Data Model (rough)

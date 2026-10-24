@@ -90,6 +90,9 @@ export function RecentShifts({
                 ? [`${money(pay.serviceCharge)} service`]
                 : []),
               `${money(pay.tipsCard + pay.tipsCash)} tips`,
+              ...(pay.tipOut > 0
+                ? [`${money(pay.tipOut)} tipped out`]
+                : []),
             ];
             return (
               <li

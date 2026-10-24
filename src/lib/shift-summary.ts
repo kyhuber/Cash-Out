@@ -41,18 +41,21 @@ export type PeriodSummary = {
   /** Daily overtime pay, summed per shift. */
   overtime: number;
   serviceCharge: number;
+  /** Card tips as earned, before tip-out. */
   tipsCard: number;
   /** Taken home on the night; never on the check. Reported, not added in. */
   tipsCash: number;
+  /** Paid out to support staff, which the employer takes off the card tips. */
+  tipOut: number;
   /**
    * What the employer owes ON THE CHECK: wages + overtime + service charge +
-   * card tips. This is the number to hold against a pay stub, which is the
-   * whole point of the app.
+   * card tips - tip-out. This is the number to hold against a pay stub, which
+   * is the whole point of the app.
    *
    * Cash tips are not in it. Neither of Kyle's employers puts them on the
    * check, so a figure that included them would never match a stub. Tip-out
-   * is not subtracted either: it happens afterwards, out of pocket, and no
-   * paycheck shows it.
+   * IS subtracted: Lumen pays card tips net of it, so the stub's gratuity line
+   * is already the smaller figure.
    */
   gross: number;
 };
@@ -109,6 +112,7 @@ export function summarisePeriod(
     serviceCharge: 0,
     tipsCard: 0,
     tipsCash: 0,
+    tipOut: 0,
     gross: 0,
   };
 
@@ -121,6 +125,7 @@ export function summarisePeriod(
     totals.serviceCharge += p.serviceCharge;
     totals.tipsCard += p.tipsCard;
     totals.tipsCash += p.tipsCash;
+    totals.tipOut += p.tipOut;
     totals.gross += p.onCheck;
   }
 
@@ -134,6 +139,7 @@ export function summarisePeriod(
     serviceCharge: round2(totals.serviceCharge),
     tipsCard: round2(totals.tipsCard),
     tipsCash: round2(totals.tipsCash),
+    tipOut: round2(totals.tipOut),
     gross: round2(totals.gross),
   };
 }

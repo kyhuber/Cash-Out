@@ -115,15 +115,20 @@ describe("summarisePeriod", () => {
     expect(s.gross).toBe(360 + 60);
   });
 
-  it("never lets tip-out reduce what the employer owes", () => {
-    // Gross is the number checked against a pay stub; tipping out happens
-    // afterwards, out of pocket, and never appears on the paycheck.
+  it("takes tip-out off the card tips on the check", () => {
+    // Lumen pays card tips net of tip-out, so the stub's gratuity line is
+    // already the smaller figure. Card tips are still reported as earned.
     const s = summarisePeriod(
-      [shift({ minutes_worked: 600, tips_card: 300, tip_out: 50 })],
+      [
+        shift({ minutes_worked: 600, tips_card: 800, tip_out: 40 }),
+        shift({ minutes_worked: 600, tips_card: 300, tip_out: 25.5 }),
+      ],
       "w1",
       period,
     );
-    expect(s.gross).toBe(500);
+    expect(s.tipsCard).toBe(1100);
+    expect(s.tipOut).toBe(65.5);
+    expect(s.gross).toBe(200 + 760 + 200 + 274.5);
   });
 
   it("values each shift at the wage it was worked at, not the current one", () => {
@@ -163,6 +168,7 @@ describe("summarisePeriod", () => {
       hours: 0,
       tipsCard: 0,
       tipsCash: 0,
+      tipOut: 0,
       gross: 0,
     });
   });

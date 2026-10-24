@@ -111,7 +111,7 @@ export type ShiftInput = z.infer<typeof shiftSchema>;
 /**
  * Optional fields that have their own column on `shifts` rather than living in
  * the optional_field_values JSON, because something needs to query or group by
- * them: the summary subtracts tip-out to show take-home, and station exists
+ * them: the paycheck takes tip-out off the card tips, and station exists
  * precisely so tips can be compared between bars.
  */
 const COLUMN_BACKED_FIELDS: readonly OptionalFieldKey[] = [

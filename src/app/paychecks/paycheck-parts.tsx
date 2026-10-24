@@ -88,6 +88,9 @@ export function HowItAddsUp({ check }: { check: Paycheck }) {
           <Line label="Service charge" amount={s.serviceCharge} />
         ) : null}
         <Line label="Card tips" amount={s.tipsCard} />
+        {s.tipOut > 0 ? (
+          <Line label="Tipped out" amount={s.tipOut} negative />
+        ) : null}
         <Line label="Gross" amount={s.gross} strong />
 
         {check.takeHome ? (
