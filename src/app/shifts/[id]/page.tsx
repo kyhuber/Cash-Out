@@ -6,6 +6,14 @@ import { ShiftBreakdown } from "../shift-breakdown";
 import type { FieldsWorkplace, ShiftValues } from "../shift-fields";
 import type { OptionalFieldKey } from "@/lib/workplace";
 import { shiftPay } from "@/lib/shift-pay";
+import { payPeriodFor } from "@/lib/pay-period";
+import { shiftTakeHome } from "@/lib/shift-summary";
+import {
+  PAYCHECK_WORKPLACE_COLUMNS,
+  SHIFT_COLUMNS,
+  toPaycheckWorkplace,
+  toShiftRow,
+} from "@/app/paychecks/rows";
 
 export const dynamic = "force-dynamic";
 
@@ -35,11 +43,41 @@ export default async function EditShiftPage({
       .maybeSingle(),
     supabase
       .from("workplaces")
-      .select("id, name, optional_fields")
+      .select(`${PAYCHECK_WORKPLACE_COLUMNS}, optional_fields`)
       .order("created_at", { ascending: true }),
   ]);
 
   if (!shift) notFound();
+
+  // Take-home depends on everything else on the same check — withholding is
+  // worked out on the whole check — so fetch the rest of this shift's period.
+  const workplaceRow = (workplaceRows ?? []).find(
+    (w) => w.id === shift.workplace_id,
+  );
+  const payWorkplace = workplaceRow ? toPaycheckWorkplace(workplaceRow) : null;
+  const period = payWorkplace
+    ? payPeriodFor(
+        shift.shift_date,
+        payWorkplace.pay_period_type,
+        payWorkplace.pay_period_anchor_date,
+      )
+    : null;
+  const { data: checkRows } = period
+    ? await supabase
+        .from("shifts")
+        .select(SHIFT_COLUMNS)
+        .eq("workplace_id", shift.workplace_id)
+        .gte("shift_date", period.start)
+        .lte("shift_date", period.end)
+    : { data: null };
+  const takeHome =
+    payWorkplace && checkRows
+      ? shiftTakeHome(
+          checkRows.map(toShiftRow),
+          payWorkplace,
+          toShiftRow(shift),
+        )
+      : null;
 
   const stations = await knownStations(supabase);
 
@@ -78,6 +116,7 @@ export default async function EditShiftPage({
     overtime_threshold_at_time: num(shift.overtime_threshold_at_time),
     tips_cash: Number(shift.tips_cash),
     tips_card: Number(shift.tips_card),
+    tip_out: Number(shift.tip_out),
     service_charge: Number(shift.service_charge),
   });
 
@@ -89,7 +128,14 @@ export default async function EditShiftPage({
         <h2 className="text-sm font-medium uppercase tracking-wide opacity-60">
           What this shift earned
         </h2>
-        <ShiftBreakdown pay={pay} wage={Number(shift.hourly_wage_at_time)} />
+        <ShiftBreakdown
+          pay={pay}
+          wage={Number(shift.hourly_wage_at_time)}
+          takeHome={takeHome}
+          tracksTipOut={(
+            (workplaceRow?.optional_fields ?? []) as OptionalFieldKey[]
+          ).includes("tip_out")}
+        />
         <p className="mt-2 text-xs opacity-60">
           Worked out from the figures below at the wage this shift was saved
           with. Change a number and save to see it update.

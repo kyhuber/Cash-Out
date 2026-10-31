@@ -80,11 +80,17 @@ Read `Cash_Out_PRD.md` first — it's the full spec. This file is for the invari
   another year (`headlineAmount` / `HeadlineNote` in
   `src/app/paychecks/paycheck-parts.tsx`).
 - Gross is what lands ON THE CHECK: regular hours x wage + daily overtime +
-  service charge + card tips. Cash tips are tracked but never in gross or
-  take-home — neither employer puts them on the check, so a figure that
-  included them could never match a stub. They are shown separately as money
-  already taken home. Tip-out is never subtracted from either; it happens
-  afterwards, out of pocket.
+  service charge + card tips - tip-out. Cash tips are tracked but never in
+  gross or take-home — neither employer puts them on the check, so a figure
+  that included them could never match a stub. They are shown separately as
+  money already taken home. Tip-out IS subtracted, before tax: the employer
+  deducts it from the check (Kyle, Oct 31 2026 — this reversed the earlier
+  "out of pocket" assumption).
+- A single shift's take-home is its gross less its SHARE of the taxes on the
+  check it's paid on, at that whole check's rate (`shiftTakeHome`). Never tax
+  a shift on its own — withholding is bracketed, so a lone shift would look
+  nearly tax-free. Union dues stay off a shift's figure; they're a flat
+  monthly charge, not something the shift earned less because of.
 - Overtime is DAILY: hours past `overtime_daily_threshold_hours` in ONE SHIFT
   are paid at the multiplier. Both are snapshotted onto the shift
   (`overtime_multiplier_at_time`, `overtime_threshold_at_time`) for the same

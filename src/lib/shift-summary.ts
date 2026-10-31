@@ -44,15 +44,16 @@ export type PeriodSummary = {
   tipsCard: number;
   /** Taken home on the night; never on the check. Reported, not added in. */
   tipsCash: number;
+  /** Paid out to support staff; the employer deducts it from the check. */
+  tipOut: number;
   /**
-   * What the employer owes ON THE CHECK: wages + overtime + service charge +
-   * card tips. This is the number to hold against a pay stub, which is the
-   * whole point of the app.
+   * What the employer owes ON THE CHECK, before taxes: wages + overtime +
+   * service charge + card tips - tip-out. This is the number to hold against
+   * a pay stub, which is the whole point of the app.
    *
    * Cash tips are not in it. Neither of Kyle's employers puts them on the
    * check, so a figure that included them would never match a stub. Tip-out
-   * is not subtracted either: it happens afterwards, out of pocket, and no
-   * paycheck shows it.
+   * IS subtracted: the employer takes it out of the check.
    */
   gross: number;
 };
@@ -109,6 +110,7 @@ export function summarisePeriod(
     serviceCharge: 0,
     tipsCard: 0,
     tipsCash: 0,
+    tipOut: 0,
     gross: 0,
   };
 
@@ -121,6 +123,7 @@ export function summarisePeriod(
     totals.serviceCharge += p.serviceCharge;
     totals.tipsCard += p.tipsCard;
     totals.tipsCash += p.tipsCash;
+    totals.tipOut += p.tipOut;
     totals.gross += p.onCheck;
   }
 
@@ -134,6 +137,7 @@ export function summarisePeriod(
     serviceCharge: round2(totals.serviceCharge),
     tipsCard: round2(totals.tipsCard),
     tipsCash: round2(totals.tipsCash),
+    tipOut: round2(totals.tipOut),
     gross: round2(totals.gross),
   };
 }
@@ -198,6 +202,45 @@ export function stubPayDateMismatch(
   return workplace.pay_date === expected
     ? undefined
     : { recorded: workplace.pay_date, expected };
+}
+
+/**
+ * One shift's estimated take-home: its gross, less its share of the taxes
+ * withheld from the check it is paid on.
+ *
+ * Withholding is worked out on the whole check, not per shift — federal tax is
+ * bracketed, so a shift taxed on its own would look nearly tax-free. Instead
+ * the shift carries the check's overall tax rate, so the shifts on one check
+ * add up to that check's taxes. Union dues are left out: they are a flat
+ * monthly charge, not something a shift earned less because of.
+ *
+ * `shifts` must include the rest of the shifts on the same check, since they
+ * set its rate. Null when the pay date's year has no tax tables, or the check
+ * has nothing on it to take a rate from.
+ */
+export function shiftTakeHome(
+  shifts: ShiftRow[],
+  workplace: SummaryWorkplace,
+  shift: ShiftRow,
+): { net: number; payDate: DateOnly } | null {
+  const period = payPeriodFor(
+    shift.shift_date,
+    workplace.pay_period_type,
+    workplace.pay_period_anchor_date,
+  );
+  // `today` only decides whether the period reads as closed, which nothing
+  // here looks at — so no clock is consulted, server-side or otherwise.
+  const check = paycheckFor(shifts, workplace, period, shift.shift_date);
+  if (!check.takeHome || check.summary.gross <= 0) return null;
+
+  const taxes = check.takeHome.deductions
+    .filter((d) => d.key !== "union_dues")
+    .reduce((sum, d) => sum + d.amount, 0);
+  const gross = shiftPay(shift).onCheck;
+  return {
+    net: round2(gross - (gross * taxes) / check.summary.gross),
+    payDate: check.payDate,
+  };
 }
 
 /** The check that pays `period`, and what has been logged toward it. */

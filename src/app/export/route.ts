@@ -86,6 +86,7 @@ export async function GET() {
       overtime_threshold_at_time: num(s.overtime_threshold_at_time),
       tips_cash: Number(s.tips_cash),
       tips_card: Number(s.tips_card),
+      tip_out: Number(s.tip_out),
       service_charge: Number(s.service_charge),
     });
 

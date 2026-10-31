@@ -6,20 +6,23 @@ keys, pay stubs) and decisions only you can make.
 Claude maintains this file. It gets rewritten whenever an action is completed or
 a decision is made, so the top section is always what's actually blocking.
 
-**Last updated:** October 18, 2026 — **paychecks now lead with take-home.**
-Every paycheck card, on the home page and on Past paychecks, shows estimated
-take-home as the big number, with gross in small type under it. No migration,
-no settings. Your Oct 17 Delaware North stub was checked against the app: the
-gap was the hours and an $8 service charge logged slightly differently from
-the stub, not the tax math, so the estimate stays as it is.
+**Last updated:** October 31, 2026 — **tip-out now comes off the check.**
+The shift page's "What this shift earned" card has a "Tipped out" line, which
+is subtracted before "Gross on the paycheck, before taxes", and an estimated
+take-home for that one shift under it. Paycheck cards subtract tip-out too, so
+the two pages agree. No migration, no settings.
 
 ---
 
 # Do these next
 
-## 1. Merge the take-home headline pull request
+## 1. Merge the tip-out change, then check it against one stub
 
-Nothing else to do — no migration, no settings.
+Branch `claude/keen-ramanujan-iyv6gy`. No migration, no settings. Once it's
+live, open a recent paycheck that had tip-out logged and hold its gross up
+against the stub's top line. None of the stub figures the tests are built
+on include tip-out, so this is the first real check that it comes off where
+you said it does: off the check, before tax.
 
 ## 2. Fill in each workplace's W-4 settings, if not already done (about 2 minutes)
 
@@ -179,7 +182,8 @@ Kept so we don't relitigate them. Say the word if you want any reopened.
 | Google sign-in | Added alongside the code, not instead of it — the code stays as the no-Google-account fallback | Sep 23 |
 | Shifts store the wage they were worked at | Yes — a raise won't rewrite history. Overtime terms are stored the same way | Aug 29, Sep 25 |
 | Overnight shifts | Belong to the date they started; duration wraps 24h | Aug 29 |
-| Tip-out | Tracked, so both gross and take-home can be shown | Aug 29 |
+| Tip-out | Tracked, and subtracted from gross before tax, because the employer takes it off the check | Aug 29, Oct 31 |
+| One shift's take-home | The shift's gross less its share of the taxes on the check it's paid on. Union dues left out | Oct 31 |
 | Framework | Next.js 16 + Supabase + Vercel | Aug 29 |
 | Service worker | Skipped — iOS doesn't need it, and stale caches would risk showing wrong numbers | Aug 29 |
 | Separate `users` table | Skipped — Supabase's `auth.users` already has it | Aug 29 |
@@ -224,6 +228,8 @@ Kept so we don't relitigate them. Say the word if you want any reopened.
 
 ## ✅ Already done
 
+- **Take-home headline** merged (Oct 18). **Tip-out off the check, and
+  take-home per shift** on the shift page (Oct 31).
 - **Live and working:** Supabase project, Vercel deployment, environment
   variables, custom SMTP through Gmail, both email templates emitting a code,
   Anthropic API key with credit on the account. Both workplaces set up with

@@ -8,6 +8,7 @@ const lumen = (over: Partial<ShiftPayInput>): ShiftPayInput => ({
   overtime_threshold_at_time: 8,
   tips_cash: 0,
   tips_card: 0,
+  tip_out: 0,
   service_charge: 0,
   ...over,
 });
@@ -76,6 +77,15 @@ describe("shiftPay", () => {
     );
     expect(p.onCheck).toBe(222.8 + 300 + 110.72);
     expect(p.earned).toBe(222.8 + 300 + 110.72 + 40);
+  });
+
+  it("takes tip-out off the check, since the employer deducts it there", () => {
+    const p = shiftPay(
+      lumen({ minutes_worked: 480, tips_card: 300, tip_out: 45, tips_cash: 20 }),
+    );
+    expect(p.tipOut).toBe(45);
+    expect(p.onCheck).toBe(477.8);
+    expect(p.earned).toBe(497.8);
   });
 
   it("reports total hours to two places", () => {

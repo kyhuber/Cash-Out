@@ -4,6 +4,7 @@ import {
   monthsBefore,
   nextPaycheck,
   pastPaychecks,
+  shiftTakeHome,
   shiftsInPeriod,
   stubPayDateMismatch,
   upcomingPaychecks,
@@ -115,15 +116,14 @@ describe("summarisePeriod", () => {
     expect(s.gross).toBe(360 + 60);
   });
 
-  it("never lets tip-out reduce what the employer owes", () => {
-    // Gross is the number checked against a pay stub; tipping out happens
-    // afterwards, out of pocket, and never appears on the paycheck.
+  it("takes tip-out off gross, since the employer deducts it from the check", () => {
     const s = summarisePeriod(
       [shift({ minutes_worked: 600, tips_card: 300, tip_out: 50 })],
       "w1",
       period,
     );
-    expect(s.gross).toBe(500);
+    expect(s.tipOut).toBe(50);
+    expect(s.gross).toBe(450);
   });
 
   it("values each shift at the wage it was worked at, not the current one", () => {
@@ -411,6 +411,40 @@ describe("nextPaycheck take-home", () => {
     const second = nextPaycheck([shift({ shift_date: "2026-09-10" })], lumen, "2026-09-20");
     expect(second.payDate).toBe("2026-09-25");
     expect(second.takeHome!.deductions.some((d) => d.key === "union_dues")).toBe(false);
+  });
+});
+
+describe("shiftTakeHome", () => {
+  const w4: SummaryWorkplace = { ...biweekly, w4_filing_status: "single" };
+  const a = shift({ id: "a", minutes_worked: 600, tips_card: 300, tip_out: 40 });
+  const b = shift({ id: "b", shift_date: "2026-09-05", minutes_worked: 480, tips_card: 120 });
+
+  it("gives each shift its share of the check's taxes, so the shares add up", () => {
+    const check = nextPaycheck([a, b], w4, "2026-09-07");
+    const ta = shiftTakeHome([a, b], w4, a)!;
+    const tb = shiftTakeHome([a, b], w4, b)!;
+    expect(ta.payDate).toBe("2026-09-18");
+    expect(ta.net).toBeLessThan(460);
+    expect(ta.net + tb.net).toBeCloseTo(check.takeHome!.net, 1);
+  });
+
+  it("taxes a shift at the whole check's rate, not as if it were alone", () => {
+    const alone = shiftTakeHome([a], w4, a)!;
+    const shared = shiftTakeHome([a, b], w4, a)!;
+    // More on the check pushes it into higher brackets.
+    expect(shared.net).toBeLessThan(alone.net);
+  });
+
+  it("leaves union dues out of a shift's take-home", () => {
+    const dues = { ...w4, union_dues_monthly: 33 };
+    const withDues = shiftTakeHome([a], dues, a)!;
+    const without = shiftTakeHome([a], w4, a)!;
+    expect(withDues.net).toBe(without.net);
+  });
+
+  it("says nothing for a year with no tax tables", () => {
+    const late = shift({ shift_date: "2027-03-02", minutes_worked: 600 });
+    expect(shiftTakeHome([late], w4, late)).toBeNull();
   });
 });
 
