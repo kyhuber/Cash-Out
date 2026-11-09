@@ -6,7 +6,12 @@ keys, pay stubs) and decisions only you can make.
 Claude maintains this file. It gets rewritten whenever an action is completed or
 a decision is made, so the top section is always what's actually blocking.
 
-**Last updated:** October 18, 2026 — **paychecks now lead with take-home.**
+**Last updated:** November 9, 2026 — **why the app asks you to sign in every
+time.** Google sign-in is set up and working. You get sent back to the sign-in
+screen each time you open the app, and the app's code isn't the cause. See the
+two-minute test below.
+
+Previously (Oct 18): **paychecks now lead with take-home.**
 Every paycheck card, on the home page and on Past paychecks, shows estimated
 take-home as the big number, with gross in small type under it. No migration,
 no settings. Your Oct 17 Delaware North stub was checked against the app: the
@@ -55,24 +60,25 @@ you delete and re-log them.
 
 ---
 
-# Still blocking: Google sign-in setup
+# Signed out every time you open the app: one test (2 minutes)
 
-Unchanged from Sep 23. Code side is done — a "Continue with Google" button sits
-above the email form. Two dashboard tasks only you can do, roughly 10 minutes:
+The app already keeps you signed in for 400 days. The sign-in is saved as a
+cookie with a 400-day expiry and refreshed quietly on every visit, so the app
+itself never signs you out. The likely cause is how an iPhone home-screen app
+handles **Google** sign-in: Google's page opens in a small browser layer
+inside the app, and the sign-in can get saved in that layer instead of the app.
 
-**1. Create a Google OAuth client** (Google Cloud Console):
-- https://console.cloud.google.com/apis/credentials — create a project if you
-  don't have one.
-- **OAuth consent screen**: External, app name "Cash Out", your email. Leave
-  it in **Testing** mode and add your own Google account under "Test users".
-- **Credentials** → Create Credentials → OAuth client ID → **Web application**.
-- Under **Authorized redirect URIs**, paste the callback URL Supabase shows
-  under Authentication → Providers → Google (looks like
-  `https://<your-project-ref>.supabase.co/auth/v1/callback`).
-- Save, copy the **Client ID** and **Client Secret**.
+To confirm it:
+1. In the app, sign out and use the **email code** this time, not Google.
+2. Swipe the app closed, open another app for a minute, then tap the Cash Out
+   tile again.
 
-**2. Enable Google in Supabase**: Authentication → Providers → Google → on,
-paste both values, save. No env vars, no redeploy.
+- **Still signed in:** Google is the cause. Tell me, and either use the email
+  code from now on, or I'll change Google sign-in so it never leaves the app.
+- **Signed out again:** something else is going on. Tell me and I'll dig in.
+
+Also useful: after you tap "Continue with Google", do you see a browser bar or
+a **Done** button at the top of the screen?
 
 ---
 
@@ -228,7 +234,9 @@ Kept so we don't relitigate them. Say the word if you want any reopened.
   variables, custom SMTP through Gmail, both email templates emitting a code,
   Anthropic API key with credit on the account. Both workplaces set up with
   real wage and pay-period details; migrations applied.
-- **Auth:** email-code sign-in, confirmed working.
+- **Auth:** email-code sign-in, confirmed working. Google sign-in set up in
+  Google Cloud and Supabase and working (by Nov 9). It doesn't stay signed in
+  on the home-screen app yet; see the test above.
 - **Data:** schema with row-level security, tested against cross-user reads,
   writes and deletes, plus constraints tested against bad input.
 - **Workplace setup:** add, edit and delete, with wage, three-date pay period
